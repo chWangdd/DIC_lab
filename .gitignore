@@ -1,0 +1,8 @@
+**/DE2_115
+**/pc_python
+**/tb_verilog
+
+output_files/
+lint/
+db/
+incremental_db/
