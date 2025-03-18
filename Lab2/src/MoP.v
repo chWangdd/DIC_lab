@@ -68,7 +68,7 @@ always_comb begin: Value_assignment
 		if(counter_r == 256)begin
 			mod_count_w = (Temp_T_r >= Divis_r) ? Temp_T_r - Divis_r : Temp_T_r;
 		end
-		Temp_T_w = ((Temp_T_w << 1) >= Divis_r) ? (Temp_T_w << 1) - Divis_r : (Temp_T_w << 1);
+		Temp_T_w = ((Temp_T_r << 1) >= Divis_r) ? (Temp_T_r << 1) - Divis_r : (Temp_T_r << 1);
 	end
 end
 
