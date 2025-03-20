@@ -86,6 +86,7 @@ always_comb begin
     n_w = n_r;
     d_w = d_r;
     enc_w = enc_r;
+    rsa+start_w = 0;
     case (state_r)
         S_QUERY_RX:
             if (~avm_waitrequest && rrdy) begin
@@ -102,11 +103,13 @@ always_comb begin
                 d_w = {d_r[247:0], n_r[255:248]};
                 enc_w = {enc_r[247:0], d_r[255:248]};
                 Waiting();
+                rsa_start_w = 1;
             end else if (!avm_waitrequest && bytes_counter_r < 7'd95) begin
                 state_w = S_QUERY_RX;
                 n_w = {n_r[247:0], avm_readdata[7:0]};
                 d_w = {d_r[247:0], n_r[255:248]};
-                enc_w = {enc_r[247:0], d_r[255:248]};                Waiting();
+                enc_w = {enc_r[247:0], d_r[255:248]};                
+                Waiting();
             end else begin
                 state_w = state_r;
                 n_w = n_r;
@@ -114,7 +117,10 @@ always_comb begin
             end
         end
         S_WAIT_CALCULATE:
-            state_w = S_QUERY_TX;
+            if (rsa_finished)
+                state_w = S_QUERY_TX;
+            else
+                state_w = state_r;
         S_QUERY_TX: begin
             if (~avm_waitrequest && trdy) begin
                 state_w = S_WRITE;
