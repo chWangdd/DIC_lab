@@ -35,8 +35,8 @@ logic [255:0] rsa_dec;
 
 // --------------- wires declaration --------------------
 wire rrdy, trdy;
-assign rrdy = (avm_waitrequest)? 0: avm_readdata[7];
-assign trdy = (avm_waitrequest)? 0: avm_readdata[6];
+assign rrdy = (avm_write)? 0 : ((avm_waitrequest)? 0: avm_readdata[7]);
+assign trdy = (avm_write)? 0 : ((avm_waitrequest)? 0: avm_readdata[6]);
 
 assign avm_address = avm_address_r;
 assign avm_read = avm_read_r;
@@ -100,9 +100,9 @@ always_comb begin
         S_READ:begin
             if(!avm_waitrequest && bytes_counter_r >= 7'd95) begin
                 state_w = S_WAIT_CALCULATE;
-                n_w = {n_r[247:0], avm_readdata[7:0]};
-                d_w = {d_r[247:0], n_r[255:248]};
-                enc_w = {enc_r[247:0], d_r[255:248]};
+                enc_w = {enc_r[247:0], avm_readdata[7:0]};
+                d_w = {d_r[247:0], enc_r[255:248]};
+                n_w = {n_r[247:0], d_r[255:248]};
                 Waiting();
                 rsa_start_w = 1;
             end else if (!avm_waitrequest && bytes_counter_r < 7'd95) begin
@@ -135,14 +135,17 @@ always_comb begin
             end
         end
         S_WRITE: begin
-            // if (~avm_waitrequest && bytes_counter_r == 7'h1f) begin
-            //     state_w = S_QUERY_RX;
-            //     StartWrite(STATUS_BASE);
-            // end else begin
+            if (~avm_waitrequest && bytes_counter_r == 7'h1e) begin
+                state_w = S_QUERY_RX;
+                StartWrite(STATUS_BASE);
+            end else begin
                 state_w = state_r;
-                // dec_w = { dec_r[247:0], 8'b0 };
+                if(~avm_waitrequest)
+                    dec_w = { dec_r[247:0], 8'b0 };
+                else
+                    dec_w = dec_r;
                 StartWrite(TX_BASE);
-            // end
+            end
         end
     endcase
 end
