@@ -18,9 +18,12 @@ localparam RX_OK_BIT   = 7;
 // Feel free to design your own FSM!
 localparam S_QUERY_RX = 3'b000;
 localparam S_READ = 3'b001;
-localparam S_WAIT_CALCULATE = 3'b100;
-localparam S_QUERY_TX = 3'b010;
-localparam S_WRITE = 3'b011;
+localparam S_WAIT_CALCULATE = 3'b010;
+localparam S_QUERY_TX = 3'b011;
+localparam S_WRITE = 3'b100;
+localparam S_QUERY_RX2 = 3'b101;
+localparam S_READ2 = 3'b110;
+localparam S_FINISHED = 3'b111;
 
 logic [255:0] n_r, n_w, d_r, d_w, enc_r, enc_w, dec_r, dec_w;
 logic [  2:0] state_r, state_w;
@@ -32,6 +35,7 @@ logic rsa_start_r, rsa_start_w;
 logic rsa_finished;
 logic [255:0] rsa_dec;
 
+// logic [  7:0] output_cnt_r, output_cnt_w;
 
 // --------------- wires declaration --------------------
 wire rrdy, trdy;
@@ -72,13 +76,6 @@ task StartWrite;
         avm_address_w = addr;
     end
 endtask
-task Waiting;
-    begin
-        avm_read_w = 1;
-        avm_write_w = 0;
-        avm_address_w = STATUS_BASE;
-    end
-endtask
 
 always_comb begin
     state_w = state_r;
@@ -95,7 +92,7 @@ always_comb begin
                 StartRead(RX_BASE);
             end else begin
                 state_w = S_QUERY_RX;
-                Waiting();
+                StartRead(STATUS_BASE);
             end
         S_READ:begin
             if(!avm_waitrequest && bytes_counter_r >= 7'd95) begin
@@ -103,14 +100,14 @@ always_comb begin
                 enc_w = {enc_r[247:0], avm_readdata[7:0]};
                 d_w = {d_r[247:0], enc_r[255:248]};
                 n_w = {n_r[247:0], d_r[255:248]};
-                Waiting();
+                StartRead(STATUS_BASE);
                 rsa_start_w = 1;
             end else if (!avm_waitrequest && bytes_counter_r < 7'd95) begin
                 state_w = S_QUERY_RX;
                 enc_w = {enc_r[247:0], avm_readdata[7:0]};
                 d_w = {d_r[247:0], enc_r[255:248]};
                 n_w = {n_r[247:0], d_r[255:248]};                
-                Waiting();
+                StartRead(STATUS_BASE);
             end else begin
                 state_w = state_r;
                 n_w = n_r;
@@ -136,33 +133,67 @@ always_comb begin
         end
         S_WRITE: begin
             if (~avm_waitrequest && bytes_counter_r == 7'h1e) begin
-                state_w = S_QUERY_RX;
-                StartWrite(STATUS_BASE);
+                state_w = S_QUERY_RX2;
+                dec_w = { dec_r[247:0], 8'b0 };
+                StartRead(STATUS_BASE);
+            end else if (~avm_waitrequest && bytes_counter_r < 7'h1e) begin
+                state_w = S_QUERY_TX;
+                dec_w = { dec_r[247:0], 8'b0 };
+                StartRead(STATUS_BASE);
             end else begin
                 state_w = state_r;
-                if(~avm_waitrequest)
-                    dec_w = { dec_r[247:0], 8'b0 };
-                else
-                    dec_w = dec_r;
                 StartWrite(TX_BASE);
             end
         end
+        S_QUERY_RX2:
+            if (~avm_waitrequest && rrdy) begin
+                state_w = S_READ2;
+                StartRead(RX_BASE);
+            end else begin
+                state_w = S_QUERY_RX2;
+                StartRead(STATUS_BASE);
+            end
+        S_READ2:begin
+            if(!avm_waitrequest && bytes_counter_r >= 7'd31) begin
+                state_w = S_WAIT_CALCULATE;
+                enc_w = {enc_r[247:0], avm_readdata[7:0]};
+                StartRead(STATUS_BASE);
+                rsa_start_w = 1;
+            end else if (!avm_waitrequest && bytes_counter_r < 7'd31) begin
+                state_w = S_QUERY_RX2;
+                enc_w = {enc_r[247:0], avm_readdata[7:0]};
+                StartRead(STATUS_BASE);
+            end else begin
+                state_w = state_r;
+                n_w = n_r;
+                StartRead(RX_BASE);
+            end
+        end
+
     endcase
 end
 
-// 4-bits counter for reading the key
+// 7-bits counter for reading the key
 always @(*) begin
-    if(state_r == S_READ && ~avm_waitrequest)
+    if((state_r == S_READ || state_r==S_READ2) && ~avm_waitrequest)
         bytes_counter_w = bytes_counter_r + 1;
     else if (state_r == S_WAIT_CALCULATE)
         bytes_counter_w = 0;
-    else if (state_r == S_WRITE && ~avm_waitrequest)
+    else if (state_r == S_WRITE && bytes_counter_r < 7'h1e && ~avm_waitrequest)
         bytes_counter_w = bytes_counter_r + 1;
-    else if (state_r == S_WRITE && bytes_counter_r == 7'h1f)
+    else if (state_r == S_WRITE && bytes_counter_r == 7'h1e && ~avm_waitrequest)
         bytes_counter_w = 0;
     else
         bytes_counter_w = bytes_counter_r;
 end
+
+// output counter
+// always @(*) begin
+//     if (state_r == S_WRITE && ~avm_waitrequest)
+//         output_cnt_w = output_cnt_r + 1;
+//     else
+//         output_cnt_w = output_cnt_r;
+// end
 
 always_ff @(posedge avm_clk or posedge avm_rst) begin
     if (avm_rst) begin
@@ -176,6 +207,7 @@ always_ff @(posedge avm_clk or posedge avm_rst) begin
         state_r <= S_QUERY_RX;
         rsa_start_r <= 0;
         bytes_counter_r <= 0;
+        // output_cnt_r <= 0;
     end else begin
         n_r <= n_w;
         d_r <= d_w;
@@ -187,6 +219,7 @@ always_ff @(posedge avm_clk or posedge avm_rst) begin
         state_r <= state_w;
         bytes_counter_r <= bytes_counter_w;
         rsa_start_r <= rsa_start_w;
+        // output_cnt_r <= output_cnt_w;
     end
 end
 
