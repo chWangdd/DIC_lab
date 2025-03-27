@@ -19,7 +19,6 @@ logic mont_f ;
 logic expsqr_f;
 logic [1:0] state_r, state_w;
 
-logic [1:0] state_r, state_w ;
 logic [255:0] i_t;
 logic start_expo_by_sqr ;
 logic expo_by_sqr ;
@@ -43,6 +42,8 @@ always_comb begin
 	case(state_r)
 	0 : state_w = (i_start)? 1 : 0 ;
 	1 : state_w = (start_expo_by_sqr)? 0 : 1 ;
+	2 : state_w = 0 ;
+	3 : state_w = 0 ;
 	endcase
 end
 
@@ -185,10 +186,12 @@ always_comb begin
 	mont_counter_w = (i_start || state_r==1)? 0 : mont_counter_r + 1 ;
 end
 always_comb begin
+	state_w = 0 ;
 	case(state_r)
 	0 :    state_w = (mont_counter_r==255)? 1 : 0 ;
 	1 :    state_w = 2 ;
 	2 :    state_w = 0 ;
+	3 :    state_w = 0 ;
 	endcase
 end
 

@@ -1,3 +1,7 @@
+// ----------------------------------
+//  version 2
+//  2025.03.27
+// ----------------------------------
 module Rsa256Wrapper (
     input         avm_rst,
     input         avm_clk,
@@ -35,7 +39,8 @@ logic rsa_start_r, rsa_start_w;
 logic rsa_finished;
 logic [255:0] rsa_dec;
 
-// logic [  7:0] output_cnt_r, output_cnt_w;
+// count the waiting time in query_RX2
+logic [ 30:0] output_cnt_r, output_cnt_w;
 
 // --------------- wires declaration --------------------
 wire rrdy, trdy;
@@ -45,7 +50,6 @@ assign trdy = (avm_write)? 0 : ((avm_waitrequest)? 0: avm_readdata[6]);
 assign avm_address = avm_address_r;
 assign avm_read = avm_read_r;
 assign avm_write = avm_write_r;
-// assign avm_writedata = {8'd0, 8'hee};
 assign avm_writedata = dec_r[247-:8];
 // ------------------------------------------------------
 
@@ -146,9 +150,13 @@ always_comb begin
             end
         end
         S_QUERY_RX2:
-            if (~avm_waitrequest && rrdy) begin
+            if (~avm_waitrequest && rrdy && !output_cnt_r[30]) begin
                 state_w = S_READ2;
                 StartRead(RX_BASE);
+            end else if (~avm_waitrequest && output_cnt_r[30]) begin
+                state_w = S_QUERY_RX;
+                StartRead(STATUS_BASE);
+                d_w = 0; n_w = 0; enc_w = 0;
             end else begin
                 state_w = S_QUERY_RX2;
                 StartRead(STATUS_BASE);
@@ -183,17 +191,19 @@ always @(*) begin
         bytes_counter_w = bytes_counter_r + 1;
     else if (state_r == S_WRITE && bytes_counter_r == 7'h1e && ~avm_waitrequest)
         bytes_counter_w = 0;
+    else if (~avm_waitrequest && output_cnt_r[30])
+        bytes_counter_w = 0;
     else
         bytes_counter_w = bytes_counter_r;
 end
 
 // output counter
-// always @(*) begin
-//     if (state_r == S_WRITE && ~avm_waitrequest)
-//         output_cnt_w = output_cnt_r + 1;
-//     else
-//         output_cnt_w = output_cnt_r;
-// end
+always @(*) begin
+    if (state_r == S_QUERY_RX2)
+        output_cnt_w = output_cnt_r + 1;
+    else
+        output_cnt_w = 0;
+end
 
 always_ff @(posedge avm_clk or posedge avm_rst) begin
     if (avm_rst) begin
@@ -207,7 +217,7 @@ always_ff @(posedge avm_clk or posedge avm_rst) begin
         state_r <= S_QUERY_RX;
         rsa_start_r <= 0;
         bytes_counter_r <= 0;
-        // output_cnt_r <= 0;
+        output_cnt_r <= 0;
     end else begin
         n_r <= n_w;
         d_r <= d_w;
@@ -219,7 +229,7 @@ always_ff @(posedge avm_clk or posedge avm_rst) begin
         state_r <= state_w;
         bytes_counter_r <= bytes_counter_w;
         rsa_start_r <= rsa_start_w;
-        // output_cnt_r <= output_cnt_w;
+        output_cnt_r <= output_cnt_w;
     end
 end
 
