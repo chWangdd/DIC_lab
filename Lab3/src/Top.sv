@@ -25,9 +25,9 @@ module Top (
 	
 	// AudPlayer
 	input  i_AUD_ADCDAT,
-	inout  i_AUD_ADCLRCK,  // write in data or read data // inout 
-	inout  i_AUD_BCLK,  // write in data or read data // inout 
-	inout  i_AUD_DACLRCK,  // write in data or read data // inout 
+	inout  i_AUD_ADCLRCK,  // // inout 
+	inout  i_AUD_BCLK,  //  // inout 
+	inout  i_AUD_DACLRCK,  //  // inout 
 	output o_AUD_DACDAT
 
 	// SEVENDECODER (optional display)
@@ -61,6 +61,7 @@ logic [2:0] state_r, state_w;
 logic i2c_oen, i2c_sdat;
 logic [19:0] addr_record, addr_play;
 logic [15:0] data_record, data_play, dac_data;
+logic dsp_play, dsp_pause, dsp_stop ;
 
 assign io_I2C_SDAT = (i2c_oen) ? i2c_sdat : 1'bz;
 
@@ -74,6 +75,10 @@ assign o_SRAM_CE_N = 1'b0;
 assign o_SRAM_OE_N = 1'b0;
 assign o_SRAM_LB_N = 1'b0;
 assign o_SRAM_UB_N = 1'b0;
+
+assign dsp_play = (state_r==S_PLAY) ;
+assign dsp_pause = (state_r==S_PLAY_PAUSE) ;
+assign dsp_pause = !(state_r==S_PLAY) && !(state_r==S_PLAY_PAUSE) ;
 
 // below is a simple example for module division
 // you can design these as you like
@@ -95,10 +100,10 @@ I2cInitializer init0(
 // in other words, determine which data addr to be fetch for player 
 AudDSP dsp0(
 	.i_rst_n(i_rst_n),
-	.i_clk(),
-	.i_start(),
-	.i_pause(),
-	.i_stop(),
+	.i_clk(i_AUD_BCLK),
+	.i_start(dsp_play),
+	.i_pause(dsp_pause),
+	.i_stop(dsp_stop),
 	.i_speed(i_speed),
 	.i_fast(i_fast),
 	.i_slow_0(i_slow0), // constant interpolation
