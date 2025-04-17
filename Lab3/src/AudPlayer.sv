@@ -42,12 +42,12 @@ always_comb begin
 			if(counter_r == 0)begin
 				state_w = S_HOLD;
 				counter_w = 0;
-				AUD_OUT_w = AUD_OUT_r[counter_r];
+				AUD_OUT_w = dac_in_r[counter_r];
 			end
 			else begin
 				state_w = S_OUT;
 				counter_w = counter_r - 1;
-				AUD_OUT_w = AUD_OUT_r[counter_r];
+				AUD_OUT_w = dac_in_r[counter_r];
 			end
 		end
 		S_HOLD: begin

@@ -98,7 +98,7 @@ always_comb begin
 				counter_w = 0;
 			end
 			else if(i_start || i_pause)begin
-				state_w =HOLD;
+				state_w =S_HOLD;
 			end
 		end
 	endcase
