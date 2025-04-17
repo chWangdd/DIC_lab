@@ -31,8 +31,8 @@ module Top (
 	output o_AUD_DACDAT
 
 	// SEVENDECODER (optional display)
-	// output [5:0] o_record_time,
-	// output [5:0] o_play_time,
+	output [5:0] o_record_time,
+	output [5:0] o_play_time,
 
 	// LCD (optional display)
 	// input        i_clk_800k,
@@ -62,6 +62,9 @@ logic i2c_oen, i2c_sdat;
 logic [19:0] addr_record, addr_play;
 logic [15:0] data_record, data_play, dac_data;
 logic dsp_play, dsp_pause, dsp_stop ;
+logic recd_start, recd_pause, recd_stop ;
+logic o_en ;
+logic [31:0] recd_time, play_time ;
 
 assign io_I2C_SDAT = (i2c_oen) ? i2c_sdat : 1'bz;
 
@@ -78,7 +81,15 @@ assign o_SRAM_UB_N = 1'b0;
 
 assign dsp_play = (state_r==S_PLAY) ;
 assign dsp_pause = (state_r==S_PLAY_PAUSE) ;
-assign dsp_pause = !(state_r==S_PLAY) && !(state_r==S_PLAY_PAUSE) ;
+assign dsp_stop = !(state_r==S_PLAY) && !(state_r==S_PLAY_PAUSE) ;
+
+assign recd_start = (state_r==S_RECD) ;
+assign recd_pause = (state_r==S_RECD_PAUSE) ;
+assign recd_stop = !(state_r==S_RECD) && !(state_r==S_RECD_PAUSE) ;
+
+// 12M hz , 8MHZ , 
+assign o_record_time[5:0] = recd_time[28:23] ; // recd_time (display/3) => 15, 10s ; 63 , 42s
+assign o_play_time[5:0]   = play_time[28:23] ; // play_time (display/3) => 15, 10s ; 63 , 42s
 
 // below is a simple example for module division
 // you can design these as you like
@@ -111,7 +122,8 @@ AudDSP dsp0(
 	.i_daclrck(i_AUD_DACLRCK),
 	.i_sram_data(data_play),
 	.o_dac_data(dac_data),
-	.o_sram_addr(addr_play)
+	.o_sram_addr(addr_play),
+	.o_dac_data_ready(o_en)
 );
 
 // === AudPlayer ===
@@ -120,7 +132,7 @@ AudPlayer player0(
 	.i_rst_n(i_rst_n),
 	.i_bclk(i_AUD_BCLK),
 	.i_daclrck(i_AUD_DACLRCK),
-	.i_en(), // enable AudPlayer only when playing audio, work with AudDSP
+	.i_en(o_en), // enable AudPlayer only when playing audio, work with AudDSP
 	.i_dac_data(dac_data), //dac_data
 	.o_aud_dacdat(o_AUD_DACDAT)
 );
@@ -131,9 +143,9 @@ AudRecorder recorder0(
 	.i_rst_n(i_rst_n), 
 	.i_clk(i_AUD_BCLK),
 	.i_lrc(i_AUD_ADCLRCK),
-	.i_start(),
-	.i_pause(),
-	.i_stop(),
+	.i_start(recd_start),
+	.i_pause(recd_pause),
+	.i_stop(recd_stop),
 	.i_data(i_AUD_ADCDAT),
 	.o_address(addr_record),
 	.o_data(data_record),
@@ -155,10 +167,14 @@ always_ff @(posedge i_AUD_BCLK or negedge i_rst_n) begin
 	if (!i_rst_n) begin
 		state_r <= S_I2C ;
 		start_i2c <= 1 ;
+		recd_time <= 0 ;
+		play_time <= 0 ;
 	end
 	else begin
 		state_r <= state_w ;
 		start_i2c <= 1 ;
+		recd_time <= (state_r==S_RECD)? recd_time + 1 : (state_r==S_IDLE)? 0 : recd_time ;
+		play_time <= (state_r==S_PLAY)? play_time + 1 : (state_r==S_IDLE)? 0 : play_time ;
 	end
 end
 
