@@ -25,6 +25,7 @@ parameter S_slow1p= 7 ;
 
 logic [2:0] state_r, state_w ;
 logic [1:0] prot_r, prot_w ;
+logic [1:0]former_prot; 
 
 logic [3:0]speed;
 logic [19:0]addr_r, addr_w;
@@ -44,7 +45,7 @@ logic [3:0] slow_counter ;
 
 assign o_dac_data = interpolation_r ;
 assign o_sram_addr = addr_r ;
-assign o_dac_data_ready = (prot_r==2) ;
+assign o_dac_data_ready = (former_prot==2) ;
 
 always_comb begin
 	case(state_r)
@@ -83,12 +84,13 @@ always_comb begin
 
 	S_fast  : interpolation_w = current_data ;
 	S_slow0 : interpolation_w = (sample_period==speed)? current_data : former_data  ;
-	S_slow1 : interpolation_w = (counter==speed)? current_data : (prot_r==2)? ( $signed(interpolation_r) + $signed(increment) ) : interpolation_r ;
+	S_slow1 : interpolation_w = (prot_r==2)? ( (sample_period==0)? former_data : ( $signed(interpolation_r) + $signed(increment) ) ) : interpolation_r ;
+	// (sample_period==speed)? current_data : (prot_r==2)? ( (sample_period==0)? former_data : ( $signed(interpolation_r) + $signed(increment) ) ) : interpolation_r ;
 
     S_fastp : interpolation_w = 0 ;
     S_slow0p: interpolation_w = 0 ;
     S_slow1p: interpolation_w = 0 ;
-	default : ready = 0 ;
+	default : interpolation_w = 0 ;
 	endcase
 end
 
@@ -108,16 +110,18 @@ always_ff @(posedge i_clk or negedge i_rst_n) begin
 		prot_r <= 0 ;
 		state_r <= 0 ;
 		slow_counter <= 0 ;
+		former_prot <= 0 ;
     end
     else begin
         sample_period <= (sample_period==speed)? 0 : (prot_r==2)? sample_period + 1 : sample_period ;
-        former_data  <= (prot_r==2)? current_data : former_data ;
-        current_data <= (prot_r==2)? i_sram_data  : current_data ;
+        former_data  <= (state_r==S_slow1)? ((sample_period==speed)? current_data : former_data):(prot_r==2)? current_data : former_data ;
+        current_data <= (state_r==S_slow1)? ((sample_period==speed)? i_sram_data  : current_data):(prot_r==2)? i_sram_data  : current_data ;
         addr_r <= addr_w ;
         interpolation_r <= interpolation_w ;
 		prot_r <= prot_w ;
 		state_r <= state_w ;
 		slow_counter <= (slow_counter==speed)? 0 : (prot_r==2)?slow_counter + 1 : slow_counter;
+		former_prot <= prot_r ;
     end
 end
 
