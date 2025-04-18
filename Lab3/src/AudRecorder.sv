@@ -80,7 +80,7 @@ always_comb begin
 		end
 		S_HOLD: begin
 			changed_w = changed_r;
-			if(!i_lrc)begin
+			if(!i_lrc && !changed_r)begin
 				ADDR_w = ADDR_r + 1;
 				data_out_w = 0;
 				changed_w = 1;
