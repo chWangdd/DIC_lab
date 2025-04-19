@@ -1,4 +1,3 @@
-//*****************The design utilizes right channel************************//
 module AudRecorder(
 	input i_rst_n,
 	input i_bclk,
@@ -80,7 +79,13 @@ always_comb begin
 		end
 		S_HOLD: begin
 			changed_w = changed_r;
-			if(!i_lrc && !changed_r)begin
+			if(i_stop)begin
+				state_w = S_IDLE;
+			end
+			else if(i_pause)begin
+				state_w = S_PAUSE_HOLD;
+			end
+			else if(!i_lrc && !changed_r)begin
 				ADDR_w = ADDR_r + 1;
 				data_out_w = 0;
 				changed_w = 1;
@@ -93,9 +98,9 @@ always_comb begin
 			end
 		end
 		S_PAUSE_HOLD: begin
+			changed_w = changed_r;
 			if(i_stop)begin
 				state_w = S_IDLE;
-				counter_w = 0;
 			end
 			else if(i_start || i_pause)begin
 				state_w =S_HOLD;
