@@ -1,6 +1,6 @@
 // file name        : I2cInitializer.sv
 // created time     : 2025/04/15 21:00
-// last revised time: 2025/04/19 12:34
+// last revised time: 2025/04/19 14:18
 module I2cInitializer (
   input i_rst_n,
   input i_clk,
@@ -27,14 +27,15 @@ localparam [data_bytes * 8-1: 0] setup_data = {
 // the first bit is HIGH  -> transmitting the initialization message
 // the second bit is HIGH -> ACK transmission
 // the first and the third bit is HIGH -> the SDAT is valid
-localparam S_IDLE        = 4'b0000;
-localparam S_START       = 4'b0001;
-localparam S_GAURD1      = 4'b0100;
-localparam S_SEND        = 4'b0101;
-localparam S_GUARD2      = 4'b0110;
-localparam S_STOP        = 4'b0010;
-localparam S_STOP_BUFFER = 4'b1010;
-localparam S_FINISH      = 4'b0011;
+localparam S_IDLE         = 4'b0000;
+localparam S_START        = 4'b0001;
+localparam S_START_BUFFER = 4'b1110;
+localparam S_GAURD1       = 4'b0100;
+localparam S_SEND         = 4'b0101;
+localparam S_GUARD2       = 4'b0110;
+localparam S_STOP         = 4'b0010;
+localparam S_STOP_BUFFER  = 4'b1010;
+localparam S_FINISH       = 4'b0011;
 
 // ---------- logic assignment --------------
 logic [data_bytes * 8 -1: 0] data_r, data_w;
@@ -45,13 +46,14 @@ logic [2:0] stop_cnt_r, stop_cnt_w;
 logic finish_r, finish_w, oen_r, oen_w;
 
 // ---------- wires assignment --------------
-assign o_sclk = (state_r[2] || state_r == S_STOP_BUFFER)? (state_r[0]) : 1;
+assign o_sclk = (state_r[2] || state_r == S_STOP_BUFFER || state_r == S_START_BUFFER)? (state_r[0]) : 1;
 assign o_sdat = (state_r == S_IDLE)        ? 1:
                 (state_r == S_START)       ? 0:
+                (state_r == S_START_BUFFER)? 0:
                 (state_r == S_STOP)        ? 0:
-                (state_r == S_STOP_BUFFER) ? 1:
+                (state_r == S_STOP_BUFFER) ? 0:
                 (state_r == S_FINISH)      ? 1:
-                (oen_r)                    ? 0: 
+                (oen_r)                    ? 1'bz: 
                                              data_r[data_bytes * 8 -1];
 assign o_finished = finish_r;
 assign o_oen = oen_r;
@@ -73,8 +75,14 @@ always_comb begin
       finish_w = 0;
       oen_w = 0;
     end
-    S_START: begin 
+    S_START_BUFFER: begin 
       state_w = S_GAURD1;
+      data_w = data_r;
+      finish_w = finish_r;
+      oen_w = oen_r;
+    end
+    S_START: begin 
+      state_w = S_START_BUFFER;
       data_w = data_r;
       finish_w = 0;
       oen_w = 0;
@@ -133,7 +141,7 @@ always_comb begin
       else
         state_w = state_r;
       data_w = data_r;
-      finish_w = 0;
+      finish_w = finish_r;
     end
   endcase
 end
