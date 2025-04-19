@@ -146,7 +146,7 @@ AudRecorder recorder0(
 	.i_bclk(i_AUD_BCLK),
 	.i_lrc(i_AUD_ADCLRCK),
 	.i_start(recd_start),
-	.i_pause(recd_pause),
+	// .i_pause(recd_pause),
 	.i_stop(recd_stop),
 	.i_data(i_AUD_ADCDAT),
 	.o_address(addr_record),
