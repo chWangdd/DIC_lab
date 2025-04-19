@@ -1,11 +1,14 @@
-module I2cInitializer(
-    input  i_rst_n,
-    input  i_clk,
-    input  i_start,
-    output o_finished,
-    output o_sclk,
-    output o_sdat,
-    output o_oen
+// file name        : I2cInitializer.sv
+// created time     : 2025/04/15 21:00
+// last revised time: 2025/04/19 12:00
+module I2cInitializer (
+  input i_rst_n,
+  input i_clk,
+  input i_start,
+  output o_finished,
+  output o_sclk,
+  output o_sdat,
+  output o_oen
 );
 localparam data_bytes = 30;
 localparam [data_bytes * 8-1: 0] setup_data = {
