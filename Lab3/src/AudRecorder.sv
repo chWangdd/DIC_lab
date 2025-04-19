@@ -87,12 +87,12 @@ always_comb begin
 			end*/
 			else if(!i_lrc && !changed_r)begin
 				ADDR_w = ADDR_r + 1;
-				data_out_w = 0;
+				// data_out_w = 0;
 				changed_w = 1;
 			end
 			else if(i_lrc && changed_r)begin
 				state_w = S_READ;
-				data_out_w = 0;
+				// data_out_w = 0;
 				ADDR_w = ADDR_r;
 				counter_w = 15;
 			end

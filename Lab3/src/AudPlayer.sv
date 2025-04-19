@@ -29,8 +29,8 @@ always_comb begin
 		S_IDLE: begin
 			if(i_daclrck)begin
 				state_w = S_OUT;
-				counter_w = 15;
-				AUD_OUT_w = 0;
+				counter_w = 14;
+				AUD_OUT_w = dac_in_r[15];
 			end
 			else begin
 				state_w = S_IDLE;

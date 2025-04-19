@@ -59,7 +59,8 @@ parameter S_PLAY_PAUSE = 5;
 
 logic finish_i2c, start_i2c ;
 logic [2:0] state_r, state_w;
-logic i2c_oen, i2c_sdat;
+logic i2c_oen;
+wire i2c_sdat;
 logic [19:0] addr_record, addr_play;
 logic [15:0] data_record, data_play, dac_data;
 logic [15:0] dac_data_r;
@@ -68,9 +69,12 @@ logic recd_start, recd_pause, recd_stop ;
 logic o_en ;
 logic [31:0] recd_time, play_time ;
 
-assign io_I2C_SDAT = (i2c_oen) ? i2c_sdat : 1'bz;
+logic [19:0] counter ;
+logic [1:0] prot_r, prot_w ;
 
-assign o_SRAM_ADDR = (state_r == S_RECD) ? addr_record : addr_play[19:0];
+assign io_I2C_SDAT = i2c_sdat;
+
+assign o_SRAM_ADDR = (state_r == S_RECD) ? addr_record : addr_play ;
 assign io_SRAM_DQ  = (state_r == S_RECD) ? data_record : 16'dz; // sram_dq as output
 assign data_play   = (state_r != S_RECD) ? io_SRAM_DQ : 16'd0; // sram_dq as input
 assign o_SRAM_WE_N = (state_r == S_RECD) ? 1'b0 : 1'b1;
@@ -104,7 +108,7 @@ I2cInitializer init0(
 	.i_start(start_i2c),
 	.o_finished(finish_i2c),
 	.o_sclk(o_I2C_SCLK),
-	.o_sdat(i2c_sdat),
+	.io_sdat(i2c_sdat),
 	.o_oen(i2c_oen) // you are outputing (you are not outputing only when you are "ack"ing.)
 );
 
@@ -134,8 +138,8 @@ AudPlayer player0(
 	.i_rst_n(i_rst_n),
 	.i_bclk(i_AUD_BCLK),
 	.i_daclrck(i_AUD_DACLRCK),
-	.i_en(o_en), // enable AudPlayer only when playing audio, work with AudDSP
-	.i_dac_data(dac_data), //dac_data
+	.i_en((o_en)), // enable AudPlayer only when playing audio, work with AudDSP
+	.i_dac_data(dac_data), //dac_data , io_SRAM_DQ
 	.o_aud_dacdat(o_AUD_DACDAT)
 );
 
@@ -147,7 +151,7 @@ AudRecorder recorder0(
 	.i_lrc(i_AUD_ADCLRCK),
 	.i_start(recd_start),
 	// .i_pause(recd_pause),
-	.i_stop(recd_stop),
+	.i_stop(recd_pause | recd_stop),
 	.i_data(i_AUD_ADCDAT),
 	.o_address(addr_record),
 	.o_data(data_record),
@@ -165,6 +169,16 @@ always_comb begin
 	endcase
 end
 
+always_comb begin
+	case(prot_r)
+	0 : prot_w = (i_AUD_DACLRCK)? 1 : 2 ;
+	1 : prot_w = (i_AUD_DACLRCK)? 1 : 2 ;
+	2 : prot_w = (!i_AUD_DACLRCK)? 3 : 0 ;
+	3 : prot_w = (!i_AUD_DACLRCK)? 3 : 0 ;
+	default : prot_w = 0 ;
+	endcase
+end
+
 always_ff @(negedge i_AUD_BCLK or negedge i_rst_n) begin
 	if (!i_rst_n) begin
 		state_r <= S_I2C ;
@@ -172,6 +186,8 @@ always_ff @(negedge i_AUD_BCLK or negedge i_rst_n) begin
 		recd_time <= 0 ;
 		play_time <= 0 ;
 		dac_data_r <= 0 ;
+		counter <= 0 ;
+		prot_r <= 0 ;
 	end
 	else begin
 		state_r <= state_w ;
@@ -179,6 +195,8 @@ always_ff @(negedge i_AUD_BCLK or negedge i_rst_n) begin
 		recd_time <= (state_r==S_RECD)? recd_time + 1 : (state_r==S_IDLE)? 0 : recd_time ;
 		play_time <= (state_r==S_PLAY)? play_time + 1 : (state_r==S_IDLE)? 0 : play_time ;
 		dac_data_r <= dac_data ;
+		counter <= (prot_r==2 && dsp_play)? counter + 1 : counter ;
+		prot_r <= prot_w ;
 	end
 end
 
