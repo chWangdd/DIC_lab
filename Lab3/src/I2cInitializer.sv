@@ -1,6 +1,6 @@
 // file name        : I2cInitializer.sv
 // created time     : 2025/04/15 21:00
-// last revised time: 2025/04/19 12:00
+// last revised time: 2025/04/19 12:34
 module I2cInitializer (
   input i_rst_n,
   input i_clk,
@@ -23,6 +23,7 @@ localparam [data_bytes * 8-1: 0] setup_data = {
     24'b00110100_000_0001_0_1001_0111,
     24'b00110100_000_0000_0_1001_0111
 };
+
 // the first bit is HIGH  -> transmitting the initialization message
 // the second bit is HIGH -> ACK transmission
 // the first and the third bit is HIGH -> the SDAT is valid
@@ -48,7 +49,7 @@ assign o_sclk = (state_r[2] || state_r == S_STOP_BUFFER)? (state_r[0]) : 1;
 assign o_sdat = (state_r == S_IDLE)        ? 1:
                 (state_r == S_START)       ? 0:
                 (state_r == S_STOP)        ? 0:
-                (state_r == S_STOP_BUFFER) ? 0:
+                (state_r == S_STOP_BUFFER) ? 1:
                 (state_r == S_FINISH)      ? 1:
                 (oen_r)                    ? 0: 
                                              data_r[data_bytes * 8 -1];
@@ -187,4 +188,5 @@ always_ff @(posedge i_clk or negedge i_rst_n) begin
     oen_r <= oen_w;
 	end
 end
+  
 endmodule
