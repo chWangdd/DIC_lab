@@ -1,9 +1,9 @@
+//*****************The design utilizes right channel************************//
 module AudRecorder(
 	input i_rst_n,
 	input i_bclk,
 	input i_lrc,
 	input i_start,
-	input i_pause,
 	input i_stop,
 	input i_data,
 	output [19:0] o_address,
@@ -13,9 +13,9 @@ module AudRecorder(
 // design the FSM and states as you like
 parameter S_IDLE       		= 3'd0;
 parameter S_READ      	    = 3'd1;
-parameter S_PAUSE_READ      = 3'd5;
+//parameter S_PAUSE_READ    = 3'd5;
 parameter S_HOLD      		= 3'd3;
-parameter S_PAUSE_HOLD		= 3'd7;
+//parameter S_PAUSE_HOLD	= 3'd7;
 
 logic [2:0]  state_r, state_w;
 logic [3:0]  counter_r, counter_w;
@@ -48,12 +48,12 @@ always_comb begin
 				data_out_w = data_out_r;
 				ADDR_w = ADDR_r;
 			end
-			else if(i_pause)begin
+			/*else if(i_pause)begin
 				state_w = S_PAUSE_READ;
 				counter_w = counter_r;
 				data_out_w = data_out_r;
 				ADDR_w = ADDR_r;
-			end
+			end*/
 			else if(i_lrc)begin
 				state_w = (counter_r == 0) ? S_HOLD : S_READ;
 				counter_w = (counter_r == 0) ? 0 : counter_r - 1;
@@ -68,7 +68,7 @@ always_comb begin
 				ADDR_w = ADDR_r;
 			end
 		end
-		S_PAUSE_READ: begin
+		/*S_PAUSE_READ: begin
 			if(i_stop)begin
 				state_w = S_IDLE;
 				counter_w = 0;
@@ -76,15 +76,15 @@ always_comb begin
 			else if(i_start || i_pause)begin
 				state_w = S_READ;
 			end
-		end
+		end*/
 		S_HOLD: begin
 			changed_w = changed_r;
 			if(i_stop)begin
 				state_w = S_IDLE;
 			end
-			else if(i_pause)begin
+			/*else if(i_pause)begin
 				state_w = S_PAUSE_HOLD;
-			end
+			end*/
 			else if(!i_lrc && !changed_r)begin
 				ADDR_w = ADDR_r + 1;
 				data_out_w = 0;
@@ -97,7 +97,7 @@ always_comb begin
 				counter_w = 15;
 			end
 		end
-		S_PAUSE_HOLD: begin
+		/*S_PAUSE_HOLD: begin
 			changed_w = changed_r;
 			if(i_stop)begin
 				state_w = S_IDLE;
@@ -105,11 +105,11 @@ always_comb begin
 			else if(i_start || i_pause)begin
 				state_w =S_HOLD;
 			end
-		end
+		end*/
 	endcase
 end
 
-always_ff @(negedge i_bclk or negedge i_rst_n) begin
+always_ff @(posedge i_bclk or negedge i_rst_n) begin
 	if (!i_rst_n) begin
 		state_r 	<= S_IDLE;
 		counter_r	<= 0;
