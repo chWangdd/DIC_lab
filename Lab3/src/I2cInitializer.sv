@@ -1,11 +1,11 @@
-module I2cInitializer (
-  input i_rst_n,
-  input i_clk,
-  input i_start,
-  output o_finished,
-  output o_sclk,
-  output o_sdat,
-  output o_oen
+module I2cInitializer(
+    input  i_rst_n,
+    input  i_clk,
+    input  i_start,
+    output o_finished,
+    output o_sclk,
+    output  o_sdat,
+    output o_oen
 );
 localparam data_bytes = 30;
 localparam [data_bytes * 8-1: 0] setup_data = {
@@ -20,169 +20,207 @@ localparam [data_bytes * 8-1: 0] setup_data = {
     24'b00110100_000_0001_0_1001_0111,
     24'b00110100_000_0000_0_1001_0111
 };
+localparam S_IDLE = 0;
+localparam S_READY = 1;
+localparam S_PROC = 2;
+localparam S_FIN1 = 3;
+localparam S_FIN2 = 4;
+localparam S_FIN3 = 5;
+localparam S_FIN4 = 6;
+localparam SCLK_READY = 0;
+localparam SCLK_OUTPUT = 1;
+localparam SCLK_MOD = 2;
 
-// the first bit is HIGH  -> transmitting the initialization message
-// the second bit is HIGH -> ACK transmission
-// the first and the third bit is HIGH -> the SDAT is valid
-localparam S_IDLE         = 4'b0000;
-localparam S_START        = 4'b0001;
-localparam S_START_BUFFER = 4'b1001;
-localparam S_FETCH_DAT    = 4'b0100;
-localparam S_SEND_DAT     = 4'b0101;
-localparam S_FETCH_ACK    = 4'b0110;
-localparam S_SEND_ACK     = 4'b0111;
-localparam S_STOP         = 4'b0010;
-localparam S_STOP_BUFFER  = 4'b1010;
-localparam S_FINISH       = 4'b0011;
+logic [2:0] state,state_nxt;
+logic [2:0] sclk_S, sclk_Snxt;
+logic [data_bytes * 8 - 1: 0] data, data_nxt;
+logic oen;
+logic sdat, sdat_nxt;
+logic sclk, sclk_nxt;
+logic finish, finish_nxt;
+logic [4:0] ctr1, ctr1_nxt; //ctr1=0~3 3rd means 24'b send finish
+logic [4:0] ctr2, ctr2_nxt; //ctr2=0~8 8th cycle send high impedence(oen=1)
 
-// ---------- logic assignment --------------
-logic [data_bytes * 8 -1: 0] data_r, data_w;
-logic [3:0] state_r, state_w;
-logic [2:0] bits_cnt_r, bits_cnt_w;
-logic [1:0] bytes_cnt_r, bytes_cnt_w;
-logic [2:0] stop_cnt_r, stop_cnt_w;
-logic finish_r, finish_w;
-
-// ---------- wires assignment --------------
-assign o_sclk = (state_r[2] || state_r == S_STOP_BUFFER)? (state_r[0]) : 1;
-assign o_sdat = (state_r == S_IDLE)        ? 1:
-                (state_r == S_START)       ? 0:
-                (state_r == S_START_BUFFER)? 0:
-                (state_r == S_STOP)        ? 0:
-                (state_r == S_STOP_BUFFER) ? 0:
-                (state_r == S_FINISH)      ? 1:
-                (state_r[2] && state_r[1]) ? 1'bz: 
-                                             data_r[data_bytes * 8 -1];
-assign o_finished = finish_r;
-assign o_oen = (state_r[2] && state_r[1]);
+assign o_finished = finish;
+assign o_sclk = sclk;
+assign o_sdat = sdat;
+assign o_oen = oen;
 
 always_comb begin
-  state_w = state_r;
-  data_w = data_r;
-  finish_w = 0;
-  case(state_r)
-    S_IDLE: begin
-      if(i_start) begin
-        state_w = S_START;
-        data_w = setup_data;
-      end else begin
-        state_w = state_r;
-        data_w = data_r;
-      end
-      finish_w = 0;
-    end
-    S_START: begin 
-      state_w = S_START_BUFFER;
-      data_w = data_r;
-      finish_w = 0;
-    end
-    S_START_BUFFER: begin 
-      state_w = S_FETCH_DAT;
-      data_w = data_r;
-      finish_w = 0;
-    end
-    S_FETCH_DAT: begin
-      state_w = S_SEND_DAT;
-      data_w = data_r;
-      finish_w = 0;
-    end
-    S_SEND_DAT: begin
-      if(bits_cnt_r == 0) begin
-        state_w = S_FETCH_ACK;
-        data_w = data_r << 1;
-      end else begin
-        state_w = S_FETCH_DAT;
-        data_w = data_r << 1;
-      end
-      finish_w = 0;
-    end
-    S_FETCH_ACK: begin
-      state_w = S_SEND_ACK;
-      data_w = data_r;
-      finish_w = 0;
-    end
-    S_SEND_ACK: begin
-      if(bytes_cnt_r == 0) begin
-        state_w = S_STOP_BUFFER;
-      end else begin
-        state_w = S_FETCH_DAT;
-      end
-      data_w = data_r;
-      finish_w = 0;
-    end
-    S_STOP_BUFFER: begin
-      state_w = S_STOP;
-      finish_w = 0;
-      data_w = data_r;
-    end
-    S_STOP: begin
-      if(data_r == 0) begin
-        state_w = S_FINISH;
-        finish_w = 1;
-      end else begin
-        state_w = S_FINISH;
-        finish_w = 0;
-      end
-      data_w = data_r;
-    end
-    S_FINISH: begin
-      if(data_r != 0 && stop_cnt_r == 0)
-        state_w = S_START;
-      else
-        state_w = state_r;
-      data_w = data_r;
-      finish_w = 0;
-    end
-  endcase
+	state_nxt = state;
+		data_nxt = data;
+		sdat_nxt = sdat;
+		sclk_nxt = sclk;
+		sclk_Snxt = sclk_S;
+		finish_nxt = 0;
+		oen = 1;
+		ctr1_nxt = 0;
+		ctr2_nxt = 0;
+	case(state)
+		S_IDLE: begin
+			if(i_start) begin
+				state_nxt = S_READY;
+				data_nxt = setup_data;
+				sclk_nxt = 1;
+				sdat_nxt = 0;
+				sclk_Snxt = SCLK_READY;
+			end
+			else begin
+				state_nxt = state;
+				data_nxt = data;
+				sdat_nxt = sdat;
+				sclk_nxt = sclk;
+				sclk_Snxt = sclk_S;
+			end
+			finish_nxt = 0;
+			oen = 1;
+			ctr1_nxt = 0;
+			ctr2_nxt = 0;
+		end
+		S_READY: begin
+			state_nxt = S_PROC;
+			data_nxt = data << 1;
+			sdat_nxt = data[data_bytes * 8 - 1];
+			sclk_nxt = 0;
+			sclk_Snxt = SCLK_READY;
+			finish_nxt = finish;
+			oen = 1;
+			ctr1_nxt = 0;
+			ctr2_nxt = 0;
+		end
+		S_PROC: begin
+			if(ctr1<5'd3) begin
+				case(sclk_S)
+					SCLK_READY: begin
+						ctr2_nxt = ctr2;
+						ctr1_nxt = ctr1;
+						sdat_nxt = sdat;
+						sclk_nxt = 1;
+						sclk_Snxt = SCLK_OUTPUT;
+						data_nxt = data;
+					end
+					SCLK_OUTPUT: begin
+						ctr2_nxt = ctr2;
+						ctr1_nxt = ctr1;
+						sdat_nxt = sdat;
+						sclk_nxt = 0;
+						sclk_Snxt = SCLK_MOD;
+						data_nxt = data;
+					end
+					SCLK_MOD: begin
+						ctr2_nxt = (ctr2==5'd8)? 0:ctr2 + 5'd1;
+						ctr1_nxt = (ctr2==5'd8)? ctr1+5'd1:ctr1;
+						sdat_nxt = data[data_bytes * 8 - 1];
+						sclk_nxt = 0;
+						sclk_Snxt = SCLK_READY;
+						data_nxt = (ctr2==5'd7)? data: ((ctr2==5'd8)&&(ctr1==5'd2))? data: data << 1;
+					end
+				endcase
+				oen = (ctr2==5'd8)? 0:1;
+				state_nxt = state;
+				finish_nxt = 0;
+			end
+			else begin
+				ctr2_nxt = 0;
+				ctr1_nxt = 0;
+				sdat_nxt = 0;
+				sclk_nxt = 1;
+				sclk_Snxt = SCLK_READY;
+				data_nxt = data;
+				oen = 1;
+				state_nxt = S_FIN1;
+				finish_nxt = 0;
+			end
+		end
+		S_FIN1: begin
+			ctr2_nxt = 0;
+			ctr1_nxt = 0;
+			sdat_nxt = 1;
+			sclk_nxt = 1;
+			sclk_Snxt = SCLK_READY;
+			data_nxt = data;
+			oen = 1;
+			state_nxt = S_FIN2;
+			finish_nxt = 0;
+		end
+		S_FIN2: begin
+			ctr2_nxt = 0;
+			ctr1_nxt = 0;
+			sdat_nxt = 0;
+			sclk_nxt = 1;
+			sclk_Snxt = SCLK_READY;
+			data_nxt = data;
+			oen = 1;
+			state_nxt = S_FIN3;
+			finish_nxt = 0;
+		end
+		S_FIN3: begin
+			ctr2_nxt = 0;
+			ctr1_nxt = 0;
+			sdat_nxt = 0;
+			sclk_nxt = 0;
+			sclk_Snxt = SCLK_READY;
+			data_nxt = data;
+			oen = 1;
+			state_nxt = S_FIN4;
+			finish_nxt = 0;
+		end
+		S_FIN4: begin
+			if(data!=240'd0) begin
+				state_nxt = S_PROC;
+				data_nxt = data << 1;
+				sdat_nxt = data[data_bytes * 8 - 1];
+				sclk_nxt = 0;
+				sclk_Snxt = SCLK_READY;
+				finish_nxt = 0;
+				oen = 1;
+				ctr1_nxt = 0;
+				ctr2_nxt = 0;
+			end
+			else begin
+				state_nxt = S_FIN4;
+				data_nxt = data;
+				sdat_nxt = 0;
+				sclk_nxt = 0;
+				sclk_Snxt = SCLK_READY; //don't care
+				finish_nxt = 1;
+				oen = 1;
+				ctr1_nxt = 0;
+				ctr2_nxt = 0;
+			end
+		end
+		default: begin
+			state_nxt = state;
+			data_nxt = data;
+			sdat_nxt = sdat;
+			sclk_nxt = sclk;
+			sclk_Snxt = sclk_S;
+			finish_nxt = 0;
+			oen = 1;
+			ctr1_nxt = 0;
+			ctr2_nxt = 0;
+		end
+	endcase
 end
-
-
-always @(*) begin
-  if (state_r == S_STOP_BUFFER)
-    stop_cnt_w = 3;
-  else if (state_r == S_FINISH)
-    stop_cnt_w = stop_cnt_r - 1;
-  else
-    stop_cnt_w = stop_cnt_r;
-end
-
-// bytes counter counts down from 2 
-always @(*) begin 
-  if (state_r == S_START)
-    bytes_cnt_w = 2;
-  else if (state_r == S_SEND_ACK)
-    bytes_cnt_w = bytes_cnt_r - 1;
-  else 
-    bytes_cnt_w = bytes_cnt_r;
-end
-
-// bits counter counts down from 7
-always @(*) begin 
-  if (state_r == S_START)
-    bits_cnt_w = 7;
-  else if (state_r == S_SEND_DAT)
-    bits_cnt_w = bits_cnt_r - 1;
-  else 
-    bits_cnt_w = bits_cnt_r;
-end
-
-// sequential block
 always_ff @(posedge i_clk or negedge i_rst_n) begin
 	if(~i_rst_n) begin
-		state_r <= S_IDLE;
-		data_r <= setup_data;
-    bytes_cnt_r <= 0;
-    stop_cnt_r <= 0;
-    bits_cnt_r <= 0;
-		finish_r <= 0;
+		state <= S_IDLE;
+		data <= setup_data;
+		ctr1 <= 0;
+		ctr2 <= 0;
+		sdat <= 1;
+		sclk <= 1;
+		sclk_S <= SCLK_MOD;
+		finish <= 0;
 	end else begin
-		state_r <= state_w;
-		data_r <= data_w;
-    bytes_cnt_r <= bytes_cnt_w;
-    stop_cnt_r <= stop_cnt_w;
-    bits_cnt_r <= bits_cnt_w;
-		finish_r <= finish_w;
+		state <= state_nxt;
+		data <= data_nxt;
+		ctr1 <= ctr1_nxt;
+		ctr2 <= ctr2_nxt;
+		sdat <= sdat_nxt;
+		sclk <= sclk_nxt;
+		sclk_S <= sclk_Snxt;
+		finish <= finish_nxt;
 	end
 end
-  
 endmodule

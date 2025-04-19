@@ -100,7 +100,7 @@ always_comb begin
 	increment = $signed ( $signed(part1) / $signed({1'b0,speed}) ) ;
 end
 
-always_ff @(posedge i_clk or negedge i_rst_n) begin
+always_ff @(negedge i_clk or negedge i_rst_n) begin
     if(!i_rst_n) begin
         sample_period <= 0 ;
         former_data <= 0 ;

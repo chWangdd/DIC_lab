@@ -28,11 +28,12 @@ module Top (
 	inout  i_AUD_ADCLRCK,  // // inout 
 	inout  i_AUD_BCLK,  //  // inout 
 	inout  i_AUD_DACLRCK,  //  // inout 
-	output o_AUD_DACDAT
+	output o_AUD_DACDAT,
 
 	// SEVENDECODER (optional display)
 	output [5:0] o_record_time,
 	output [5:0] o_play_time,
+	output [2:0] o_state
 
 	// LCD (optional display)
 	// input        i_clk_800k,
@@ -50,7 +51,7 @@ module Top (
 
 // design the FSM and states as you like
 parameter S_IDLE       = 0;
-parameter S_I2C        = 1;
+parameter S_I2C        = 7;
 parameter S_RECD       = 2;
 parameter S_RECD_PAUSE = 3;
 parameter S_PLAY       = 4;
@@ -61,6 +62,7 @@ logic [2:0] state_r, state_w;
 logic i2c_oen, i2c_sdat;
 logic [19:0] addr_record, addr_play;
 logic [15:0] data_record, data_play, dac_data;
+logic [15:0] dac_data_r;
 logic dsp_play, dsp_pause, dsp_stop ;
 logic recd_start, recd_pause, recd_stop ;
 logic o_en ;
@@ -90,7 +92,7 @@ assign recd_stop = !(state_r==S_RECD) && !(state_r==S_RECD_PAUSE) ;
 // 12M hz , 8MHZ , 
 assign o_record_time[5:0] = recd_time[28:23] ; // recd_time (display/3) => 15, 10s ; 63 , 42s
 assign o_play_time[5:0]   = play_time[28:23] ; // play_time (display/3) => 15, 10s ; 63 , 42s
-
+assign o_state = state_r;
 // below is a simple example for module division
 // you can design these as you like
 
@@ -141,7 +143,7 @@ AudPlayer player0(
 // receive data from WM8731 with I2S protocal and save to SRAM
 AudRecorder recorder0(
 	.i_rst_n(i_rst_n), 
-	.i_clk(i_AUD_BCLK),
+	.i_bclk(i_AUD_BCLK),
 	.i_lrc(i_AUD_ADCLRCK),
 	.i_start(recd_start),
 	.i_pause(recd_pause),
@@ -159,22 +161,24 @@ always_comb begin
 	S_RECD_PAUSE :  state_w = (i_key_0)? S_RECD : (i_key_2)? S_IDLE : S_RECD_PAUSE ;
 	S_PLAY : state_w = (i_key_1)? S_PLAY_PAUSE : (i_key_2)? S_IDLE : S_PLAY ;
 	S_PLAY_PAUSE :  state_w = (i_key_1)? S_PLAY : (i_key_2)? S_IDLE : S_PLAY_PAUSE ;
-	default : state_w = S_I2C ;
+	default : state_w = S_IDLE ;
 	endcase
 end
 
-always_ff @(posedge i_AUD_BCLK or negedge i_rst_n) begin
+always_ff @(negedge i_AUD_BCLK or negedge i_rst_n) begin
 	if (!i_rst_n) begin
 		state_r <= S_I2C ;
 		start_i2c <= 1 ;
 		recd_time <= 0 ;
 		play_time <= 0 ;
+		dac_data_r <= 0 ;
 	end
 	else begin
 		state_r <= state_w ;
 		start_i2c <= 1 ;
 		recd_time <= (state_r==S_RECD)? recd_time + 1 : (state_r==S_IDLE)? 0 : recd_time ;
 		play_time <= (state_r==S_PLAY)? play_time + 1 : (state_r==S_IDLE)? 0 : play_time ;
+		dac_data_r <= dac_data ;
 	end
 end
 

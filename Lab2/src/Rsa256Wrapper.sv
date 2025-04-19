@@ -150,10 +150,10 @@ always_comb begin
             end
         end
         S_QUERY_RX2:
-            if (~avm_waitrequest && rrdy && !output_cnt_r[30]) begin
+            if (~avm_waitrequest && rrdy && !output_cnt_r[26]) begin
                 state_w = S_READ2;
                 StartRead(RX_BASE);
-            end else if (~avm_waitrequest && output_cnt_r[30]) begin
+            end else if (~avm_waitrequest && output_cnt_r[26]) begin
                 state_w = S_QUERY_RX;
                 StartRead(STATUS_BASE);
                 d_w = 0; n_w = 0; enc_w = 0;
@@ -191,7 +191,7 @@ always @(*) begin
         bytes_counter_w = bytes_counter_r + 1;
     else if (state_r == S_WRITE && bytes_counter_r == 7'h1e && ~avm_waitrequest)
         bytes_counter_w = 0;
-    else if (~avm_waitrequest && output_cnt_r[30])
+    else if (~avm_waitrequest && output_cnt_r[26])
         bytes_counter_w = 0;
     else
         bytes_counter_w = bytes_counter_r;
