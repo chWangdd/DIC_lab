@@ -240,4 +240,8 @@ assign HEX5 = '1;
 assign HEX6 = '1;
 assign HEX7 = '1;
 
+Top top0(
+	.i_clk(),
+	.i_rst_n(),
+)
 endmodule

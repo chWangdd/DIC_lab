@@ -7,3 +7,5 @@ output_files/
 lint/
 db/
 incremental_db/
+.vscode/
+**.mp4
