@@ -146,8 +146,8 @@ assign VGA_CLK = CLK_25M;
 
 Altpll pll0( // generate with qsys, please follow lab2 tutorials
 	.clk_clk(CLOCK_50),
-	.reset_reset_n(key3down),
-	.altpll_800k_clk(CLK_25M)
+	.reset_reset_n(KEY[3]),
+	.altpll_25m_clk(CLK_25M)
 );
 
 // you can decide key down settings on your own, below is just an example
