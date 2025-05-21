@@ -186,8 +186,8 @@ Top top0(
 	.o_VGA_R(VGA_R),
 	.o_VGA_G(VGA_G),
 	.o_VGA_B(VGA_B),
-	.o_V_sync(VGA_HS),
-	.o_H_sync(VGA_VS)
+	.o_V_sync(VGA_VS),
+	.o_H_sync(VGA_HS)
 );
 
 
