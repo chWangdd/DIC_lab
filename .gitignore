@@ -1,11 +1,20 @@
-Lab2/DE2_115
-Lab3/src/DE2_115
+Lab*/src/DE2_115
+Lab*/src/tb_verilog
 **/pc_python
-**/tb_verilog
 
+### Quartus setting files and folder
 output_files/
 lint/
 db/
 incremental_db/
+**/DE2_115.**
+.qsys_edit
+# 不知道為什麼這裡也有
+Lab2/src/DE2_115.**
+
+### Vscode setting folder
 .vscode/
+
+#### the files does not need to stored remotely
+**.bak
 **.mp4
