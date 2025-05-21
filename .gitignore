@@ -1,4 +1,5 @@
-**/DE2_115
+Lab2/DE2_115
+Lab3/src/DE2_115
 **/pc_python
 **/tb_verilog
 
@@ -6,3 +7,5 @@ output_files/
 lint/
 db/
 incremental_db/
+.vscode/
+**.mp4
