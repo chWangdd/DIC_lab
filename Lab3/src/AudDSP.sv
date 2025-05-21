@@ -9,6 +9,7 @@ module AudDSP (
 	input i_slow_0, // constant interpolation
 	input i_slow_1, // linear interpolation
 	input i_daclrck,
+	input i_reverse,
 	input  [15:0]i_sram_data,
 	output [15:0]o_dac_data,
 	output [19:0]o_sram_addr,
@@ -42,6 +43,11 @@ logic ready ;
 logic [3:0] counter ;
 logic [3:0] slow_counter ;
 
+logic fast ;
+logic slow0 ;
+logic slow1 ;
+logic reverse ;
+
 
 assign o_dac_data = interpolation_r ;
 assign o_sram_addr = addr_r ;
@@ -51,13 +57,13 @@ always_comb begin
 	case(state_r)
 	S_idle  : state_w = (i_start)? ((i_fast||speed==1)?S_fast:(i_slow_0)?S_slow0:(i_slow_1)?S_slow1:S_idle) : S_idle ;
 
-	S_fast  : state_w = (i_stop)? S_idle : (i_pause)? S_fastp : S_fast ;
-	S_slow0 : state_w = (i_stop)? S_idle : (i_pause)? S_slow0p : S_slow0 ;
-	S_slow1 : state_w = (i_stop)? S_idle : (i_pause)? S_slow1p : S_slow1 ;
+	S_fast  : state_w = (i_stop)? S_idle : (i_pause)? S_fastp  : ((fast)?S_fast:(slow0)?S_slow0:(slow1)?S_slow1:S_fast)   ;
+	S_slow0 : state_w = (i_stop)? S_idle : (i_pause)? S_slow0p : ((fast)?S_fast:(slow0)?S_slow0:(slow1)?S_slow1:S_slow0)  ;
+	S_slow1 : state_w = (i_stop)? S_idle : (i_pause)? S_slow1p : ((fast)?S_fast:(slow0)?S_slow0:S_slow1)  ;
 
-    S_fastp : state_w = (i_stop)? S_idle : (i_start)? S_fast  : S_fastp ;
-    S_slow0p: state_w = (i_stop)? S_idle : (i_start)? S_slow0 : S_slow0p ;
-    S_slow1p: state_w = (i_stop)? S_idle : (i_start)? S_slow1 : S_slow1p ;
+    S_fastp : state_w = (i_stop)? S_idle : (i_start)? S_fast  : ((fast)?S_fastp:(slow0)?S_slow0p:(slow1)?S_slow1p:S_fastp) ;
+    S_slow0p: state_w = (i_stop)? S_idle : (i_start)? S_slow0 : ((fast)?S_fastp:(slow0)?S_slow0p:(slow1)?S_slow1p:S_slow0p) ;
+    S_slow1p: state_w = (i_stop)? S_idle : (i_start)? S_slow1 : ((fast)?S_fastp:(slow0)?S_slow0p:S_slow1p) ;
 	default : state_w = S_idle ;
 	endcase
 end
@@ -66,9 +72,9 @@ always_comb begin
 	case(state_r)
 	S_idle  : addr_w = 0 ;
 
-	S_fast  : addr_w = (prot_r==2)? addr_r + speed : addr_r ;
-	S_slow0 : addr_w = (sample_period==speed)? addr_r + 1 : addr_r ;
-	S_slow1 : addr_w = (sample_period==speed)? addr_r + 1 : addr_r ;
+	S_fast  : addr_w = (prot_r==2)? ( (reverse)? (addr_r-speed) : (addr_r+speed) ) : addr_r ;
+	S_slow0 : addr_w = (sample_period==speed)? ( (reverse)? (addr_r-1) : (addr_r+1) ) : addr_r ;
+	S_slow1 : addr_w = (sample_period==speed)? ( (reverse)? (addr_r-1) : (addr_r+1) ) : addr_r ;
 
     S_fastp : addr_w = addr_r ;
     S_slow0p: addr_w = addr_r ;
@@ -95,7 +101,7 @@ always_comb begin
 end
 
 always_comb begin
-    speed = i_speed ;
+    speed = (i_speed==0)? 1 : i_speed ;
 	part1 = current_data-former_data ;
 	increment = $signed ( $signed(part1) / $signed({1'b0,speed}) ) ;
 end
@@ -111,6 +117,10 @@ always_ff @(posedge i_clk or negedge i_rst_n) begin
 		state_r <= 0 ;
 		slow_counter <= 0 ;
 		former_prot <= 0 ;
+		fast <= i_fast ;
+		slow0 <= i_slow_0 ;
+		slow1 <= i_slow_1 ;
+		reverse <= i_reverse ;
     end
     else begin
         sample_period <= (sample_period==speed)? 0 : (prot_r==2)? sample_period + 1 : sample_period ;
@@ -122,6 +132,10 @@ always_ff @(posedge i_clk or negedge i_rst_n) begin
 		state_r <= state_w ;
 		slow_counter <= (slow_counter==speed)? 0 : (prot_r==2)?slow_counter + 1 : slow_counter;
 		former_prot <= prot_r ;
+		fast <= i_fast ;
+		slow0 <= i_slow_0 ;
+		slow1 <= i_slow_1 ;
+		reverse <= i_reverse ;
     end
 end
 

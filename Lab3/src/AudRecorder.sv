@@ -13,14 +13,14 @@ module AudRecorder(
 // design the FSM and states as you like
 parameter S_IDLE       		= 3'd0;
 parameter S_READ      	    = 3'd1;
-//parameter S_PAUSE_READ    = 3'd5;
+//parameter S_PAUSE_READ    = 3'd5;m 
 parameter S_HOLD      		= 3'd3;
 //parameter S_PAUSE_HOLD	= 3'd7;
 
 logic [2:0]  state_r, state_w;
 logic [3:0]  counter_r, counter_w;
 logic [15:0] data_out_r, data_out_w;
-logic [19:0] ADDR_r, ADDR_w;
+logic [24:0] ADDR_r, ADDR_w;
 logic changed_r, changed_w;
 
 assign o_data = data_out_r;
