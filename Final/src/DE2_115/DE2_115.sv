@@ -141,7 +141,6 @@ logic key0down, key1down, key2down;
 logic CLK_25M;
 // ------------ wires assignment ---------------------
 assign VGA_SYNC_N = 1'b0;
-assign VGA_BLANK_N = 1'b0;
 assign VGA_CLK = CLK_25M;
 
 Altpll pll0( // generate with qsys, please follow lab2 tutorials
@@ -187,7 +186,8 @@ Top top0(
 	.o_VGA_G(VGA_G),
 	.o_VGA_B(VGA_B),
 	.o_V_sync(VGA_VS),
-	.o_H_sync(VGA_HS)
+	.o_H_sync(VGA_HS),
+	.o_VGA_BLANK_N(VGA_BLANK_N)
 );
 
 

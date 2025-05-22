@@ -12,7 +12,7 @@ module VGAController (
   output [7:0] o_VGA_B,
   output o_V_sync,
   output o_H_sync,
-  output o_sending
+  output o_blank_n
 
 );
   localparam H_front_porch = 16;
@@ -38,7 +38,7 @@ module VGAController (
   // Wires assignment
   assign o_H_sync = (Hstate_ff == S_Sync);
   assign o_V_sync = (Vstate_ff == S_Sync);
-  assign o_sending = (Hstate_ff == S_Active && Vstate_ff == S_Active);
+  assign o_blank_n = (Hstate_ff == S_Active && Vstate_ff == S_Active);
   assign o_VGA_R = i_color[ 7: 0];
   assign o_VGA_G = i_color[15: 8];
   assign o_VGA_B = i_color[23:16];
