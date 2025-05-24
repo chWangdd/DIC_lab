@@ -15,16 +15,7 @@ module VGAController (
   output o_blank_n
 
 );
-  `include "vga_param.sv"
-  // localparam H_front_porch = 16;
-  // localparam H_back_porch  = 48;
-  // localparam H_active_area = 640;
-  // localparam H_sync_pulse  = 96;
-  // localparam V_front_porch = 10;
-  // localparam V_back_porch  = 33;
-  // localparam V_active_area = 480;
-  // localparam V_sync_pulse  = 2;
-  
+  `include "vga_param.sv"  
   parameter S_Sync   = 0;
   parameter S_Bporch = 1;
   parameter S_Active = 2;
