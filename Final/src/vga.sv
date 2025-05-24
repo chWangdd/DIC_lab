@@ -15,14 +15,15 @@ module VGAController (
   output o_blank_n
 
 );
-  localparam H_front_porch = 16;
-  localparam H_back_porch  = 48;
-  localparam H_active_area = 640;
-  localparam H_sync_pulse  = 96;
-  localparam V_front_porch = 10;
-  localparam V_back_porch  = 33;
-  localparam V_active_area = 480;
-  localparam V_sync_pulse  = 2;
+  `include "vga_param.sv"
+  // localparam H_front_porch = 16;
+  // localparam H_back_porch  = 48;
+  // localparam H_active_area = 640;
+  // localparam H_sync_pulse  = 96;
+  // localparam V_front_porch = 10;
+  // localparam V_back_porch  = 33;
+  // localparam V_active_area = 480;
+  // localparam V_sync_pulse  = 2;
   
   parameter S_Sync   = 0;
   parameter S_Bporch = 1;
@@ -30,8 +31,8 @@ module VGAController (
   parameter S_Fporch = 3;
 
   // Registers assignment
-  reg [ 9:0] Hcnt_ff, Hcnt_comb; // count from 0~799
-  reg [ 9:0] Vcnt_ff, Vcnt_comb; // count from 0~524
+  reg [ 10:0] Hcnt_ff, Hcnt_comb; // count from 0~799
+  reg [ 10:0] Vcnt_ff, Vcnt_comb; // count from 0~524
   
   reg [ 1:0] Hstate_ff, Hstate_comb, Vstate_ff, Vstate_comb;
   
@@ -106,6 +107,9 @@ module VGAController (
         S_Active: begin // active to front porch
           if (Vcnt_ff >= V_active_area) begin 
             Vstate_comb = S_Fporch;
+            Vcnt_comb = 1;
+          end else if (V_front_porch == 0) begin
+            Vstate_comb = S_Sync;
             Vcnt_comb = 1;
           end
         end
