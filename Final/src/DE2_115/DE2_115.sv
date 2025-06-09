@@ -149,18 +149,15 @@ output		          		D5M_TRIGGER,
 output		          		D5M_XCLKIN
 */
 );
-
-// --------- registers assignment --------------------
+//=======================================================
+// Logic/Reg/Wire Declaration
+//=======================================================
 logic key0down, key1down, key2down;
 logic CLK_25M;
-// ------------ wires assignment ---------------------
 
-
-assign VGA_SYNC_N = 1'b0;
-assign VGA_CLK = CLK_25M;
-/*
-logic	[15:0]	Read_DATA1;
-logic	[15:0]	Read_DATA2;
+logic [11:0] SDRAM_W_B;
+logic [11:0] SDRAM_W_R;
+logic SDRAM_W_clk, SDRAM_W_en;
 
 logic	[11:0]	mCCD_DATA;
 logic			mCCD_DVAL;
@@ -195,6 +192,8 @@ logic             auto_start;
 assign	D5M_TRIGGER	=	1'b1;  // tRIGGER
 assign	D5M_RESET_N	=	DLY_RST_1;
 assign  VGA_CTRL_CLK = ~VGA_CLK;
+assign  VGA_SYNC_N = 1'b0;
+assign  VGA_CLK = CLK_25M;
 
 assign	LEDR		=	SW;
 assign	LEDG		=	Y_Cont;
@@ -205,6 +204,17 @@ assign  VGA_R = oVGA_R[9:2];
 assign  VGA_G = oVGA_G[9:2];
 assign  VGA_B = oVGA_B[9:2];
 
+
+assign SDRAM_W_G = sCCD_G[11:2];
+assign SDRAM_W_B = sCCD_B[11:2];
+assign SDRAM_W_R = sCCD_R[11:2];
+assign SDRAM_W_clk = D5M_PIXLCLK;
+assign SDRAM_W_en  = sCCD_DVAL;
+
+//auto start when power on
+assign auto_start = ((KEY[0])&&(DLY_RST_3)&&(!DLY_RST_4))? 1'b1:1'b0;
+
+
 //D5M read 
 always@(posedge D5M_PIXLCLK)
 begin
@@ -212,17 +222,6 @@ begin
 	rCCD_LVAL	<=	D5M_LVAL;
 	rCCD_FVAL	<=	D5M_FVAL;
 end
-
-
-
-//auto start when power on
-assign auto_start = ((KEY[0])&&(DLY_RST_3)&&(!DLY_RST_4))? 1'b1:1'b0;
-*/
-
-logic [11:0] SDRAM_W_G;
-logic [11:0] SDRAM_W_B;
-logic [11:0] SDRAM_W_R;
-logic SDRAM_W_clk, SDRAM_W_en;
 
 Altpll pll0( // generate with qsys, please follow lab2 tutorials
 	.clk_clk(CLOCK_50),
@@ -271,11 +270,6 @@ Top top0(
 	.o_VGA_BLANK_N(VGA_BLANK_N)
 );
 
-assign SDRAM_W_G = sCCD_G[11:2];
-assign SDRAM_W_B = sCCD_B[11:2];
-assign SDRAM_W_R = sCCD_R[11:2];
-assign SDRAM_W_clk = D5M_PIXLCLK;
-assign SDRAM_W_en  = sCCD_DVAL;
 
 
 sdram_pll 			u6	(
@@ -286,15 +280,15 @@ sdram_pll 			u6	(
 							.c3(VGA_CLK)     //25M 
 						);
 Sdram_Control	u7	(	//	HOST Side						
-						    .RESET_N(KEY[0]),
+						  .RESET_N(KEY[0]),
 							.CLK(sdram_ctrl_clk), //clk_100M
 
 							//	FIFO Write Side 1
 							.WR1_DATA({1'b0,sCCD_G[11:7],sCCD_B[11:2]}), // {1'b0, SDRAM_W_G[9:5], SDRAM_W_B}
 							.WR1(sCCD_DVAL), // SDRAM_W_en
 							.WR1_ADDR(0),
-						    .WR1_MAX_ADDR(640*480/2),
-						    .WR1_LENGTH(8'h50),					
+						  .WR1_MAX_ADDR(640*480/2),
+						  .WR1_LENGTH(8'h50),					
 							.WR1_LOAD(!DLY_RST_0),
 							.WR1_CLK(D5M_PIXLCLK), //SDAM_W_CLK
 
@@ -302,31 +296,31 @@ Sdram_Control	u7	(	//	HOST Side
 							.WR2_DATA({1'b0,sCCD_G[6:2],sCCD_R[11:2]}), //{1'b0, SDRAM_W_G[4:0], SDRAM_W_R}
 							.WR2(sCCD_DVAL),  // SDRAM_W_en
 							.WR2_ADDR(23'h100000),
-						    .WR2_MAX_ADDR(23'h100000+640*480/2),
+						  .WR2_MAX_ADDR(23'h100000+640*480/2),
 							.WR2_LENGTH(8'h50),
 							.WR2_LOAD(!DLY_RST_0),
 							.WR2_CLK(D5M_PIXLCLK),
 
 							//	FIFO Read Side 1
-						    .RD1_DATA(Read_DATA1),
-				        	.RD1(Read),
-				        	.RD1_ADDR(0),
-						    .RD1_MAX_ADDR(640*480/2),
+						  .RD1_DATA(Read_DATA1),
+				      .RD1(Read),
+				      .RD1_ADDR(0),
+						  .RD1_MAX_ADDR(640*480/2),
 							.RD1_LENGTH(8'h50),
 							.RD1_LOAD(!DLY_RST_0),
 							.RD1_CLK(~VGA_CTRL_CLK),
 							
 							//	FIFO Read Side 2
-						    .RD2_DATA(Read_DATA2),
+						  .RD2_DATA(Read_DATA2),
 							.RD2(Read),
 							.RD2_ADDR(23'h100000),
-						    .RD2_MAX_ADDR(23'h100000+640*480/2),
+						  .RD2_MAX_ADDR(23'h100000+640*480/2),
 							.RD2_LENGTH(8'h50),
-				        	.RD2_LOAD(!DLY_RST_0),
+				      .RD2_LOAD(!DLY_RST_0),
 							.RD2_CLK(~VGA_CTRL_CLK),
 							
 							//	SDRAM Side
-						    .SA(DRAM_ADDR),
+						  .SA(DRAM_ADDR),
 							.BA(DRAM_BA),
 							.CS_N(DRAM_CS_N),
 							.CKE(DRAM_CKE),
@@ -410,6 +404,39 @@ VGA_Controller		u1	(	//	Host Side
 							.iZOOM_MODE_SW(SW[16])
 						);
 
+
+/*
+sdram_pll 			u6	(
+							.inclk0(CLOCK2_50),
+							.c0(sdram_ctrl_clk),
+							.c1(DRAM_CLK),
+							.c2(D5M_XCLKIN), //25M
+`ifdef VGA_640x480p60
+							.c3(VGA_CLK)     //25M 
+`else
+						    .c4(VGA_CLK)     //40M 	
+`endif
+						);
+//VGA DISPLAY
+VGA_Controller		u1	(	//	Host Side
+							.oRequest(Read),
+							.iRed(Read_DATA2[9:0]),
+							.iGreen({Read_DATA1[14:10],Read_DATA2[14:10]}),
+							.iBlue(Read_DATA1[9:0]),
+							//	VGA Side
+							.oVGA_R(oVGA_R),
+							.oVGA_G(oVGA_G),
+							.oVGA_B(oVGA_B),
+							.oVGA_H_SYNC(VGA_HS),
+							.oVGA_V_SYNC(VGA_VS),
+							.oVGA_SYNC(VGA_SYNC_N),
+							.oVGA_BLANK(VGA_BLANK_N),
+							//	Control Signal
+							.iCLK(VGA_CTRL_CLK),
+							.iRST_N(DLY_RST_2),
+							.iZOOM_MODE_SW(SW[16])
+						);
+*/
 
 // comment those are use for display
 assign HEX0 = '1;
