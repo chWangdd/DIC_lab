@@ -1,5 +1,6 @@
 //******* VER_1 *********//
-//******* 0609  *********//
+//*******  0609  ********//
+//**Todo: add mem_valid**// 
 module SRAM_Controller(
 
 i_clk,
@@ -65,12 +66,14 @@ assign o_SRAM_OE_N = 1'b0 ;
 assign o_SRAM_LB_N = 1'b0 ;
 assign o_SRAM_UB_N = 1'b0 ;
 
+assign mem_valid = ((state_r == READ_BACK) || (state_r == WRITE_BACK));
+
 always@(*)begin: FSM
 	state_w = state_r;
 	case(state_r)
 		IDLE: begin
 			if(core_mem_request)begin
-				state_w = (core_mem_wr) ? READ : WRTIE;
+				state_w = (core_mem_wr) ? READ : WRITE;
 			end
 		end
 		READ: begin
