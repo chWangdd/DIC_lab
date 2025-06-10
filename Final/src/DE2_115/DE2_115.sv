@@ -213,9 +213,17 @@ begin
 	rCCD_FVAL	<=	D5M_FVAL;
 end
 
+
+
 //auto start when power on
 assign auto_start = ((KEY[0])&&(DLY_RST_3)&&(!DLY_RST_4))? 1'b1:1'b0;
 */
+
+logic [11:0] SDRAM_W_G;
+logic [11:0] SDRAM_W_B;
+logic [11:0] SDRAM_W_R;
+logic SDRAM_W_clk, SDRAM_W_en;
+
 Altpll pll0( // generate with qsys, please follow lab2 tutorials
 	.clk_clk(CLOCK_50),
 	.reset_reset_n(KEY[3]),
@@ -263,18 +271,19 @@ Top top0(
 	.o_VGA_BLANK_N(VGA_BLANK_N)
 );
 
+assign SDRAM_W_G = sCCD_G[11:2];
+assign SDRAM_W_B = sCCD_B[11:2];
+assign SDRAM_W_R = sCCD_R[11:2];
+assign SDRAM_W_clk = D5M_PIXLCLK;
+assign SDRAM_W_en  = sCCD_DVAL;
 
-/*
+
 sdram_pll 			u6	(
 							.inclk0(CLOCK2_50),
 							.c0(sdram_ctrl_clk),
 							.c1(DRAM_CLK),
 							.c2(D5M_XCLKIN), //25M
-`ifdef VGA_640x480p60
 							.c3(VGA_CLK)     //25M 
-`else
-						    .c4(VGA_CLK)     //40M 	
-`endif
 						);
 Sdram_Control	u7	(	//	HOST Side						
 						    .RESET_N(KEY[0]),
@@ -284,13 +293,8 @@ Sdram_Control	u7	(	//	HOST Side
 							.WR1_DATA({1'b0,sCCD_G[11:7],sCCD_B[11:2]}), // {1'b0, SDRAM_W_G[9:5], SDRAM_W_B}
 							.WR1(sCCD_DVAL), // SDRAM_W_en
 							.WR1_ADDR(0),
-`ifdef VGA_640x480p60
 						    .WR1_MAX_ADDR(640*480/2),
-						    .WR1_LENGTH(8'h50),
-`else
-							.WR1_MAX_ADDR(800*600/2),
-							.WR1_LENGTH(8'h80),
-`endif							
+						    .WR1_LENGTH(8'h50),					
 							.WR1_LOAD(!DLY_RST_0),
 							.WR1_CLK(D5M_PIXLCLK), //SDAM_W_CLK
 
@@ -298,13 +302,8 @@ Sdram_Control	u7	(	//	HOST Side
 							.WR2_DATA({1'b0,sCCD_G[6:2],sCCD_R[11:2]}), //{1'b0, SDRAM_W_G[4:0], SDRAM_W_R}
 							.WR2(sCCD_DVAL),  // SDRAM_W_en
 							.WR2_ADDR(23'h100000),
-`ifdef VGA_640x480p60
 						    .WR2_MAX_ADDR(23'h100000+640*480/2),
 							.WR2_LENGTH(8'h50),
-`else							
-							.WR2_MAX_ADDR(23'h100000+800*600/2),
-							.WR2_LENGTH(8'h80),
-`endif	
 							.WR2_LOAD(!DLY_RST_0),
 							.WR2_CLK(D5M_PIXLCLK),
 
@@ -312,13 +311,8 @@ Sdram_Control	u7	(	//	HOST Side
 						    .RD1_DATA(Read_DATA1),
 				        	.RD1(Read),
 				        	.RD1_ADDR(0),
-`ifdef VGA_640x480p60
 						    .RD1_MAX_ADDR(640*480/2),
 							.RD1_LENGTH(8'h50),
-`else
-							.RD1_MAX_ADDR(800*600/2),
-							.RD1_LENGTH(8'h80),
-`endif
 							.RD1_LOAD(!DLY_RST_0),
 							.RD1_CLK(~VGA_CTRL_CLK),
 							
@@ -326,13 +320,8 @@ Sdram_Control	u7	(	//	HOST Side
 						    .RD2_DATA(Read_DATA2),
 							.RD2(Read),
 							.RD2_ADDR(23'h100000),
-`ifdef VGA_640x480p60
 						    .RD2_MAX_ADDR(23'h100000+640*480/2),
 							.RD2_LENGTH(8'h50),
-`else
-							.RD2_MAX_ADDR(23'h100000+800*600/2),
-							.RD2_LENGTH(8'h80),
-`endif
 				        	.RD2_LOAD(!DLY_RST_0),
 							.RD2_CLK(~VGA_CTRL_CLK),
 							
@@ -420,7 +409,7 @@ VGA_Controller		u1	(	//	Host Side
 							.iRST_N(DLY_RST_2),
 							.iZOOM_MODE_SW(SW[16])
 						);
-*/
+
 
 // comment those are use for display
 assign HEX0 = '1;
