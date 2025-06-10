@@ -1,4 +1,4 @@
-`define VGA_640x480p60 1
+`include "vga_param.sv"
 
 module DE2_115 (
 	input CLOCK_50,
@@ -154,7 +154,6 @@ module DE2_115 (
 // ===================================================
 logic key0down, key1down, key2down;
 logic CLK_25M;
-<<<<<<< HEAD
 
 logic	[15:0]	Read_DATA1;
 logic	[15:0]	Read_DATA2;
@@ -228,7 +227,7 @@ assign HEX7 = '1;
 
 //auto start when power on
 assign auto_start = ((KEY[0])&&(DLY_RST_3)&&(!DLY_RST_4))? 1'b1:1'b0;
->>>>>>> c99dff3 (put camara example code into the projecet)
+
 assign SDRAM_W_G = sCCD_G[11:2];
 assign SDRAM_W_B = sCCD_B[11:2];
 assign SDRAM_W_R = sCCD_R[11:2];
@@ -242,71 +241,7 @@ begin
 	rCCD_LVAL	<=	D5M_LVAL;
 	rCCD_FVAL	<=	D5M_FVAL;
 end
-=======
-// ------------ wires assignment ---------------------
 
-
-assign VGA_SYNC_N = 1'b0;
-assign VGA_CLK = CLK_25M;
-/*
-logic	[15:0]	Read_DATA1;
-logic	[15:0]	Read_DATA2;
->>>>>>> fc57ead (add comment to DE2-115)
-
-logic	[11:0]	mCCD_DATA;
-logic			mCCD_DVAL;
-logic			mCCD_DVAL_d;
-logic	[15:0]	X_Cont;
-logic	[15:0]	Y_Cont;
-logic	[9:0]	X_ADDR;
-logic	[31:0]	Frame_Cont;
-logic			DLY_RST_0;
-logic			DLY_RST_1;
-logic			DLY_RST_2;
-logic			DLY_RST_3;
-logic			DLY_RST_4;
-logic			Read;
-logic		[11:0]	rCCD_DATA;
-logic				rCCD_LVAL;
-logic				rCCD_FVAL;
-logic	[11:0]	sCCD_R;
-logic	[11:0]	sCCD_G;
-logic	[11:0]	sCCD_B;
-logic			sCCD_DVAL;
-
-logic	[9:0]	oVGA_R;   				//	VGA Red[9:0]
-logic	[9:0]	oVGA_G;	 				//	VGA Green[9:0]
-logic	[9:0]	oVGA_B;   				//	VGA Blue[9:0]
-//power on start
-logic             auto_start;
-//=======================================================
-//  Structural coding
-//=======================================================
-// D5M
-assign	D5M_TRIGGER	=	1'b1;  // tRIGGER
-assign	D5M_RESET_N	=	DLY_RST_1;
-assign  VGA_CTRL_CLK = ~VGA_CLK;
-
-assign	LEDR		=	SW;
-assign	LEDG		=	Y_Cont;
-assign	UART_TXD = UART_RXD;
-
-//fetch the high 8 bits
-assign  VGA_R = oVGA_R[9:2];
-assign  VGA_G = oVGA_G[9:2];
-assign  VGA_B = oVGA_B[9:2];
-
-//D5M read 
-always@(posedge D5M_PIXLCLK)
-begin
-	rCCD_DATA	<=	D5M_D;
-	rCCD_LVAL	<=	D5M_LVAL;
-	rCCD_FVAL	<=	D5M_FVAL;
-end
-
-//auto start when power on
-assign auto_start = ((KEY[0])&&(DLY_RST_3)&&(!DLY_RST_4))? 1'b1:1'b0;
-*/
 Altpll pll0( // generate with qsys, please follow lab2 tutorials
 	.clk_clk(CLOCK_50),
 	.reset_reset_n(KEY[3]),
@@ -370,6 +305,8 @@ Sdram_Control	u7	(	//	HOST Side
 							.WR1_DATA({1'b0,sCCD_G[11:7],sCCD_B[11:2]}), // {1'b0, SDRAM_W_G[9:5], SDRAM_W_B}
 							.WR1(sCCD_DVAL), // SDRAM_W_en
 							.WR1_ADDR(0),
+						  .WR1_MAX_ADDR(640*480/2),
+						  .WR1_LENGTH(8'h50),					
 							.WR1_LOAD(!DLY_RST_0),
 							.WR1_CLK(D5M_PIXLCLK), //SDAM_W_CLK
 
@@ -377,6 +314,7 @@ Sdram_Control	u7	(	//	HOST Side
 							.WR2_DATA({1'b0,sCCD_G[6:2],sCCD_R[11:2]}), //{1'b0, SDRAM_W_G[4:0], SDRAM_W_R}
 							.WR2(sCCD_DVAL),  // SDRAM_W_en
 							.WR2_ADDR(23'h100000),
+					    .WR2_MAX_ADDR(23'h100000+640*480/2),
 							.WR2_LENGTH(8'h50),
 							.WR2_LOAD(!DLY_RST_0),
 							.WR2_CLK(D5M_PIXLCLK),
