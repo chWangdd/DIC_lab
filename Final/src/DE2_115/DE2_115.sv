@@ -1,4 +1,4 @@
-`define VGA_640x480p60 1
+`include "vga_param.sv"
 
 module DE2_115 (
 	input CLOCK_50,
@@ -135,59 +135,69 @@ module DE2_115 (
 	inout [3:0] HSMC_D,
 	input [16:0] HSMC_RX_D_P,
 	output [16:0] HSMC_TX_D_P,
-	inout [6:0] EX_IO
-/*
-input		    [11:0]		D5M_D,
-input		          		D5M_FVAL,
-input		          		D5M_LVAL,
-input		          		D5M_PIXLCLK,
-output		          		D5M_RESET_N,
-output		          		D5M_SCLK,
-inout		          		D5M_SDATA,
-input		          		D5M_STROBE,
-output		          		D5M_TRIGGER,
-output		          		D5M_XCLKIN
-*/
+	inout [6:0] EX_IO,
+
+	input		    [11:0]		D5M_D,
+	input		          		D5M_FVAL,
+	input		          		D5M_LVAL,
+	input		          		D5M_PIXLCLK,
+	output		          		D5M_RESET_N,
+	output		          		D5M_SCLK,
+	inout		          		D5M_SDATA,
+	input		          		D5M_STROBE,
+	output		          		D5M_TRIGGER,
+	output		          		D5M_XCLKIN
+
 );
-//=======================================================
-// Logic/Reg/Wire Declaration
-//=======================================================
+// ===================================================
+// Registers declarations
+// ===================================================
 logic key0down, key1down, key2down;
 logic CLK_25M;
 
-logic [11:0] SDRAM_W_B;
-logic [11:0] SDRAM_W_R;
-logic SDRAM_W_clk, SDRAM_W_en;
+logic	[15:0]	Read_DATA1;
+logic	[15:0]	Read_DATA2;
 
 logic	[11:0]	mCCD_DATA;
-logic			mCCD_DVAL;
-logic			mCCD_DVAL_d;
+logic			    mCCD_DVAL;
+logic			    mCCD_DVAL_d;
 logic	[15:0]	X_Cont;
 logic	[15:0]	Y_Cont;
-logic	[9:0]	X_ADDR;
+logic	[ 9:0]	X_ADDR;
 logic	[31:0]	Frame_Cont;
-logic			DLY_RST_0;
-logic			DLY_RST_1;
-logic			DLY_RST_2;
-logic			DLY_RST_3;
-logic			DLY_RST_4;
-logic			Read;
-logic		[11:0]	rCCD_DATA;
-logic				rCCD_LVAL;
-logic				rCCD_FVAL;
+logic			    DLY_RST_0;
+logic			    DLY_RST_1;
+logic			    DLY_RST_2;
+logic			    DLY_RST_3;
+logic			    DLY_RST_4;
+logic			    Read;
+logic	[11:0]	rCCD_DATA;
+logic	  			rCCD_LVAL;
+logic		  		rCCD_FVAL;
 logic	[11:0]	sCCD_R;
 logic	[11:0]	sCCD_G;
 logic	[11:0]	sCCD_B;
-logic			sCCD_DVAL;
+logic			    sCCD_DVAL;
 
-logic	[9:0]	oVGA_R;   				//	VGA Red[9:0]
-logic	[9:0]	oVGA_G;	 				//	VGA Green[9:0]
-logic	[9:0]	oVGA_B;   				//	VGA Blue[9:0]
+logic	[ 9:0]	oVGA_R;   				//	VGA Red[9:0]
+logic	[ 9:0]	oVGA_G;	 				  //	VGA Green[9:0]
+logic	[ 9:0]	oVGA_B;   				//	VGA Blue[9:0]
 //power on start
 logic             auto_start;
+
+logic [11:0] SDRAM_W_G;
+logic [11:0] SDRAM_W_B;
+logic [11:0] SDRAM_W_R;
+logic SDRAM_W_clk, SDRAM_W_en;
+// ===================================================
+// Wires declarations
+// ===================================================
+
 //=======================================================
 //  Structural coding
 //=======================================================
+assign VGA_SYNC_N = 1'b0;
+assign VGA_CLK = CLK_25M;
 // D5M
 assign	D5M_TRIGGER	=	1'b1;  // tRIGGER
 assign	D5M_RESET_N	=	DLY_RST_1;
@@ -205,15 +215,24 @@ assign  VGA_G = oVGA_G[9:2];
 assign  VGA_B = oVGA_B[9:2];
 
 
+// comment those are use for display
+assign HEX0 = '1;
+assign HEX1 = '1;
+assign HEX2 = '1;
+assign HEX3 = '1;
+assign HEX4 = '1;
+assign HEX5 = '1;
+assign HEX6 = '1;
+assign HEX7 = '1;
+
+//auto start when power on
+assign auto_start = ((KEY[0])&&(DLY_RST_3)&&(!DLY_RST_4))? 1'b1:1'b0;
+>>>>>>> c99dff3 (put camara example code into the projecet)
 assign SDRAM_W_G = sCCD_G[11:2];
 assign SDRAM_W_B = sCCD_B[11:2];
 assign SDRAM_W_R = sCCD_R[11:2];
 assign SDRAM_W_clk = D5M_PIXLCLK;
 assign SDRAM_W_en  = sCCD_DVAL;
-
-//auto start when power on
-assign auto_start = ((KEY[0])&&(DLY_RST_3)&&(!DLY_RST_4))? 1'b1:1'b0;
-
 
 //D5M read 
 always@(posedge D5M_PIXLCLK)
@@ -228,6 +247,13 @@ Altpll pll0( // generate with qsys, please follow lab2 tutorials
 	.reset_reset_n(KEY[3]),
 	.altpll_25m_clk(CLK_25M)
 );
+// sdram_pll 			u6	(
+// 							.inclk0(CLOCK2_50),
+// 							.c0(sdram_ctrl_clk),
+// 							.c1(DRAM_CLK),
+// 							.c2(D5M_XCLKIN), //25M
+// 							.c3(VGA_CLK)     //25M 
+// 						);
 
 // you can decide key down settings on your own, below is just an example
 Debounce deb0(
@@ -251,6 +277,7 @@ Debounce deb2(
 	.o_neg(key2down) 
 );
 
+// VGA和SDRAM之間的信號還須修正
 Top top0(
 	.i_rst_n(KEY[3]),
 	.i_clk(CLOCK_50),
@@ -270,15 +297,6 @@ Top top0(
 	.o_VGA_BLANK_N(VGA_BLANK_N)
 );
 
-
-
-sdram_pll 			u6	(
-							.inclk0(CLOCK2_50),
-							.c0(sdram_ctrl_clk),
-							.c1(DRAM_CLK),
-							.c2(D5M_XCLKIN), //25M
-							.c3(VGA_CLK)     //25M 
-						);
 Sdram_Control	u7	(	//	HOST Side						
 						  .RESET_N(KEY[0]),
 							.CLK(sdram_ctrl_clk), //clk_100M
@@ -296,15 +314,14 @@ Sdram_Control	u7	(	//	HOST Side
 							.WR2_DATA({1'b0,sCCD_G[6:2],sCCD_R[11:2]}), //{1'b0, SDRAM_W_G[4:0], SDRAM_W_R}
 							.WR2(sCCD_DVAL),  // SDRAM_W_en
 							.WR2_ADDR(23'h100000),
-						  .WR2_MAX_ADDR(23'h100000+640*480/2),
 							.WR2_LENGTH(8'h50),
 							.WR2_LOAD(!DLY_RST_0),
 							.WR2_CLK(D5M_PIXLCLK),
 
 							//	FIFO Read Side 1
-						  .RD1_DATA(Read_DATA1),
-				      .RD1(Read),
-				      .RD1_ADDR(0),
+					    .RD1_DATA(Read_DATA1),
+		        	.RD1(Read),
+		        	.RD1_ADDR(0),
 						  .RD1_MAX_ADDR(640*480/2),
 							.RD1_LENGTH(8'h50),
 							.RD1_LOAD(!DLY_RST_0),
@@ -314,13 +331,13 @@ Sdram_Control	u7	(	//	HOST Side
 						  .RD2_DATA(Read_DATA2),
 							.RD2(Read),
 							.RD2_ADDR(23'h100000),
-						  .RD2_MAX_ADDR(23'h100000+640*480/2),
+					    .RD2_MAX_ADDR(23'h100000+640*480/2),
 							.RD2_LENGTH(8'h50),
-				      .RD2_LOAD(!DLY_RST_0),
+			      	.RD2_LOAD(!DLY_RST_0),
 							.RD2_CLK(~VGA_CTRL_CLK),
 							
 							//	SDRAM Side
-						  .SA(DRAM_ADDR),
+					    .SA(DRAM_ADDR),
 							.BA(DRAM_BA),
 							.CS_N(DRAM_CS_N),
 							.CKE(DRAM_CKE),
@@ -330,7 +347,12 @@ Sdram_Control	u7	(	//	HOST Side
 							.DQ(DRAM_DQ),
 							.DQM(DRAM_DQM)
 						);
-//D5M image capture
+// D5M image capture
+// 按KEY3重新開啟
+// 按KEY2會停止
+// 輸出為12bits data
+// x => 0 ~ 2591
+// y => 0 ~ 1943
 CCD_Capture			u3	(	.oDATA(mCCD_DATA),
 							.oDVAL(mCCD_DVAL),
 							.oX_Cont(X_Cont),
@@ -378,74 +400,30 @@ Reset_Delay			u2	(	.iCLK(CLOCK2_50),
 						);
 
 //Frame count display
-SEG7_LUT_8 			u5	(	.oSEG0(HEX0),.oSEG1(HEX1),
-							.oSEG2(HEX2),.oSEG3(HEX3),
-							.oSEG4(HEX4),.oSEG5(HEX5),
-							.oSEG6(HEX6),.oSEG7(HEX7),
-							.iDIG(Frame_Cont[31:0])
-						);
+// SEG7_LUT_8 			u5	(	.oSEG0(HEX0),.oSEG1(HEX1),
+// 							.oSEG2(HEX2),.oSEG3(HEX3),
+// 							.oSEG4(HEX4),.oSEG5(HEX5),
+// 							.oSEG6(HEX6),.oSEG7(HEX7),
+// 							.iDIG(Frame_Cont[31:0])
+// 						);
 //VGA DISPLAY
-VGA_Controller		u1	(	//	Host Side
-							.oRequest(Read),
-							.iRed(Read_DATA2[9:0]),
-							.iGreen({Read_DATA1[14:10],Read_DATA2[14:10]}),
-							.iBlue(Read_DATA1[9:0]),
-							//	VGA Side
-							.oVGA_R(oVGA_R),
-							.oVGA_G(oVGA_G),
-							.oVGA_B(oVGA_B),
-							.oVGA_H_SYNC(VGA_HS),
-							.oVGA_V_SYNC(VGA_VS),
-							.oVGA_SYNC(VGA_SYNC_N),
-							.oVGA_BLANK(VGA_BLANK_N),
-							//	Control Signal
-							.iCLK(VGA_CTRL_CLK),
-							.iRST_N(DLY_RST_2),
-							.iZOOM_MODE_SW(SW[16])
-						);
-
-
-/*
-sdram_pll 			u6	(
-							.inclk0(CLOCK2_50),
-							.c0(sdram_ctrl_clk),
-							.c1(DRAM_CLK),
-							.c2(D5M_XCLKIN), //25M
-`ifdef VGA_640x480p60
-							.c3(VGA_CLK)     //25M 
-`else
-						    .c4(VGA_CLK)     //40M 	
-`endif
-						);
-//VGA DISPLAY
-VGA_Controller		u1	(	//	Host Side
-							.oRequest(Read),
-							.iRed(Read_DATA2[9:0]),
-							.iGreen({Read_DATA1[14:10],Read_DATA2[14:10]}),
-							.iBlue(Read_DATA1[9:0]),
-							//	VGA Side
-							.oVGA_R(oVGA_R),
-							.oVGA_G(oVGA_G),
-							.oVGA_B(oVGA_B),
-							.oVGA_H_SYNC(VGA_HS),
-							.oVGA_V_SYNC(VGA_VS),
-							.oVGA_SYNC(VGA_SYNC_N),
-							.oVGA_BLANK(VGA_BLANK_N),
-							//	Control Signal
-							.iCLK(VGA_CTRL_CLK),
-							.iRST_N(DLY_RST_2),
-							.iZOOM_MODE_SW(SW[16])
-						);
-*/
-
-// comment those are use for display
-assign HEX0 = '1;
-assign HEX1 = '1;
-assign HEX2 = '1;
-assign HEX3 = '1;
-assign HEX4 = '1;
-assign HEX5 = '1;
-assign HEX6 = '1;
-assign HEX7 = '1;
+// VGA_Controller		u1	(	//	Host Side
+// 							.oRequest(Read),
+// 							.iRed(Read_DATA2[9:0]),
+// 							.iGreen({Read_DATA1[14:10],Read_DATA2[14:10]}),
+// 							.iBlue(Read_DATA1[9:0]),
+// 							//	VGA Side
+// 							.oVGA_R(oVGA_R),
+// 							.oVGA_G(oVGA_G),
+// 							.oVGA_B(oVGA_B),
+// 							.oVGA_H_SYNC(VGA_HS),
+// 							.oVGA_V_SYNC(VGA_VS),
+// 							.oVGA_SYNC(VGA_SYNC_N),
+// 							.oVGA_BLANK(VGA_BLANK_N),
+// 							//	Control Signal
+// 							.iCLK(VGA_CTRL_CLK),
+// 							.iRST_N(DLY_RST_2),
+// 							.iZOOM_MODE_SW(SW[16])
+// 						);
 
 endmodule

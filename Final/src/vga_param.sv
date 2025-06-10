@@ -1,4 +1,4 @@
-`define vga_640x480p60        // 25MHz    VGA clock
+`define vga_640x480p60 1        // 25MHz    VGA clock
 // `define vga_1024x768p43       // 44.9MHz  VGA clock
 // `define vga_1024x768p60       // 65 MHz   VGA clock
 // `define vga_1280x960p60       // 102.1MHz VGA clock
