@@ -1,6 +1,6 @@
-//******* VER_1 *********//
-//*******  0609  ********//
-//*******  1959  ********//
+//*****    VER_3    *****//
+//***** Date: 0609  *****//
+//***** Time: 1959  *****//
 
 module SRAM_Controller(
 
@@ -75,6 +75,14 @@ assign o_SRAM_UB_N = 1'b0 ;
 assign mem_valid = ((state_r == READ_BACK) || (state_r == WRITE_BACK) || ((state_r == RECOG_CTRL) && (counter_r == LIMIT + 1)));
 assign addr_count_w = ((state_r == RECOG_CTRL) && (addr_count_r < LetterNum) && (counter_r == LIMIT + 1)) ? addr_count_r + 1 : 0;
 
+assign o_SRAM_ADDR  = (core_mem_request) ? core_mem_addr : (state_r == RECOG_CTRL) ? {5'b0, addr_count_r[8:4],6'b0 ,addr_count_r[3:0]} : IN_ADDR_r;
+assign io_SRAM_DQ   = (state_r == WRITE) ? IN_DATA_r     :     16'dz;
+assign o_SRAM_WE_N  = (state_r == WRITE) ? 1'b0          :     	1'b1;
+
+assign core_mem_r_value = DATA_BACK_r;
+assign DATA_BACK_w      = ((state_r == READ) || (state_r == RECOG_CTRL))  ? io_SRAM_DQ: DATA_BACK_r;   
+assign core_wait        = ((state_r == READ) || (state_r == WRITE) || ((state_r == RECOG_CTRL) && (counter_r <= LIMIT)));
+
 always@(*)begin: FSM
 	state_w = state_r;
 	case(state_r)
@@ -118,14 +126,6 @@ always@(*)begin: Input_Capture
 	IN_DATA_w = (core_mem_request) ? core_mem_r_value : IN_DATA_r;
 	IN_ADDR_w = (core_mem_request) ? core_mem_addr    : IN_ADDR_r;
 end
-
-assign o_SRAM_ADDR  = (core_mem_request) ? core_mem_addr : (state_r == RECOG_CTRL) ? {11'b0, addr_count_r} : IN_ADDR_r;
-assign io_SRAM_DQ   = (state_r == WRITE) ? IN_DATA_r     :     16'dz;
-assign o_SRAM_WE_N  = (state_r == WRITE) ? 1'b0          :     	1'b1;
-
-assign core_mem_r_value = DATA_BACK_r;
-assign DATA_BACK_w      = ((state_r == READ) || (state_r == RECOG_CTRL))  ? io_SRAM_DQ: DATA_BACK_r;   
-assign core_wait        = ((state_r == READ) || (state_r == WRITE) || ((state_r == RECOG_CTRL) && (counter_r <= LIMIT)));
 
 always@(posedge i_clk or negedge i_rst)begin: Flip_Flop
 	if(!i_rst)begin
