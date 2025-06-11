@@ -25,6 +25,7 @@ module Tracker (
   // =========================================
   reg [ 1:0] state_ff, state_comb;
   reg [ 1:0] pixelGrade_ff, pixelGrade_comb;
+  reg pixelGradeVAL_ff, pixelGradeVAL_comb;
   reg [ 4:0] maxPointH_ff, maxPointH_comb, maxPointV_ff, maxPointV_comb; // candidate point
   reg [14:0] maxPointValue_ff, maxPointValue_comb;                        // value of candidate point
   reg [14:0] prePointH_ff, prePointH_comb, prePointV_ff, prePointV_comb;  // previous tracked point
@@ -72,7 +73,8 @@ module Tracker (
   assign iB_R = (iB > iR) ? iB -iR: 0;
   assign iB_G = (iB > iG) ? iB -iG: 0;
   assign o_valid = pointGenerated_ff; 
-
+  assign o_pointH = maxPointH_ff;
+  assign o_pointV = maxPointV_ff;
   genvar n;
   generate
     for (n = 0; n < `rangeH ; n = n + 1) begin
@@ -99,6 +101,7 @@ module Tracker (
           .istart_h(SF_startH1[n1]),
           .istart_v(SF_startV1[n1]),
           .idata(pixelGrade_ff),
+          .idataVAL(pixelGradeVAL_ff),
           .o_valid(SF_valid1[n1]),
           .o_sum(SF_sum1[n1])
       );
@@ -117,6 +120,7 @@ module Tracker (
           .istart_h(SF_startH2[n2]),
           .istart_v(SF_startV2[n2]),
           .idata(pixelGrade_ff),
+          .idataVAL(pixelGradeVAL_ff),
           .o_valid(SF_valid2[n2]),
           .o_sum(SF_sum2[n2])
       );
@@ -126,12 +130,17 @@ module Tracker (
   // Combinational Block
   // =========================================
   always_comb begin : pixelGrade
-    if (iB_R >= iB_G)
-      pixelGrade_comb = iB_G[`gradeFactor:`gradeFactor-1];
-    else if (iB_G > iB_R)
-      pixelGrade_comb = iB_R[`gradeFactor:`gradeFactor-1];
-    else
-      pixelGrade_comb = pixelGrade_ff;
+    pixelGrade_comb = pixelGrade_ff;
+    pixelGradeVAL_comb = 0;
+    if (i_pixelVAL) begin
+      if (iB_R >= iB_G)
+        pixelGrade_comb = iB_G[`gradeFactor:`gradeFactor-1];
+      else if (iB_G > iB_R)
+        pixelGrade_comb = iB_R[`gradeFactor:`gradeFactor-1];
+      else
+        pixelGrade_comb = pixelGrade_ff;
+      pixelGradeVAL_comb = 1
+    end
   end
 
   always_comb begin : counter
@@ -386,6 +395,7 @@ module Tracker (
       SF_reset2_ff     <= 0;
       startH_ff        <= {0, totalH[8:0]} - `subFrameH * 3;
       startV_ff        <= {0, totalV[8:0]} - `subFrameV * 3;
+      pixelGradeVAL_ff <= 0;
       for (i = 0; i < `rangeH; i = i + 1) begin
         SF_startOffsetH1_ff[i] <= 0;
         SF_startOffsetV1_ff[i] <= 0;
@@ -407,6 +417,7 @@ module Tracker (
       SF_reset2_ff     <= SF_reset2_comb;
       startH_ff        <= startH_comb;
       startV_ff        <= startV_comb;
+      pixelGradeVAL_ff <= pixelGradeVAL_comb;
       for (i = 0; i < `rangeH; i = i + 1) begin
         SF_startOffsetH1_ff[i] <= SF_startOffsetH1_comb[i];
         SF_startOffsetV1_ff[i] <= SF_startOffsetV1_comb[i];        
@@ -425,6 +436,7 @@ module staticFrame (
   input [ 9:0] istart_h,
   input [ 9:0] istart_v,
   input [ 1:0] idata,
+  input i_dataVAL;
   output o_valid,
   output [7:0] o_sum
 );
@@ -437,15 +449,16 @@ module staticFrame (
   always_comb begin
     acc_comb = acc_ff;
     valid_comb = valid_ff;
-    if ((
-          i_h >= istart_h && 
-          i_h < istart_h + `subFrameH
-        ) && (
-          i_v >= istart_v && 
-          i_v < istart_v + `subFrameV
-        ))
+    if (i_dataVAL) begin
+      if ((
+            i_h >= istart_h && 
+            i_h < istart_h + `subFrameH
+          ) && (
+            i_v >= istart_v && 
+            i_v < istart_v + `subFrameV
+          ))
       acc_comb = acc_ff + idata;
-
+    end
     // after accumulating data in the range of a frame, set "valid" HIGH
     if ((i_h >= istart_h + `subFrameH) && (i_v >= istart_v + `subFrameV - 1))
       valid_comb = 1;
