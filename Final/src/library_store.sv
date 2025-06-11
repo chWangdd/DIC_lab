@@ -1,18 +1,18 @@
 module library_store(
-	input i_clk, 
-	input i_rst_n,
-	input [4:0]i_x,
-	input [4:0]i_y,
-	input i_deny, 
-	input i_start, 
-	input i_valid, 
+	input  i_clk, 
+	input  i_rst_n,
+	input  [4:0]i_x,
+	input  [4:0]i_y,
+	input  i_deny, 
+	input  i_start, 
+	input  i_valid, 
 	output [4:0] o_x,
 	output [4:0] o_y, 
 	output [14:0] o_addr
 );
 
 logic [1:0] state_r, state_w;
-logic [4:0] addr_r, addr_w;
+logic [4:0] addr_r , addr_w;
 
 localparam IDLE = 2'd0, 
 		   WORK = 2'd1;
@@ -38,7 +38,7 @@ assign o_x    = ((state_r == WORK) && (!i_deny)) ? i_x : 0;
 assign o_y    = ((state_r == WORK) && (!i_deny)) ? i_y : 0;
 assign o_addr = {addr_r, counter_r};
 
-assign counter_w = (state_r == IDLE) ? 0 : (i_valid) ? counter_r + 1;
+assign counter_w = (state_r == IDLE) ? 0 : (i_valid) ? counter_r + 1 : counter_r;
 
 assign addr_w    = ((state_r == WORK) && (i_deny)) ? ((add_r == LIMIT - 1) ? 0 : addr + 1) : addr_r;
 
