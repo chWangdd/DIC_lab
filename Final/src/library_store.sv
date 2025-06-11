@@ -8,7 +8,7 @@ module library_store(
 	input  i_valid, 
 	output [4:0] o_x,
 	output [4:0] o_y, 
-	output [14:0] o_addr
+	output [19:0] o_addr
 );
 
 logic [1:0] state_r, state_w;
@@ -29,18 +29,18 @@ always@(*)begin: FSM
 			state_w = (i_start) ? WORK : IDLE;
 		end
 		WORK: begin
-			state_w = (i_deny)  ? IDLE : WORK; 
+			state_w = (!i_deny)  ? IDLE : WORK; 
 		end
 	endcase
 end
 
-assign o_x    = ((state_r == WORK) && (!i_deny)) ? i_x : 0;
-assign o_y    = ((state_r == WORK) && (!i_deny)) ? i_y : 0;
-assign o_addr = {addr_r, counter_r};
+assign o_x    = ((state_r == WORK) && (i_deny)) ? i_x : 0;
+assign o_y    = ((state_r == WORK) && (i_deny)) ? i_y : 0;
+assign o_addr = {5'b0, addr_r, counter_r};
 
 assign counter_w = (state_r == IDLE) ? 0 : (i_valid) ? counter_r + 1 : counter_r;
 
-assign addr_w    = ((state_r == WORK) && (i_deny)) ? ((add_r == LIMIT - 1) ? 0 : addr + 1) : addr_r;
+assign addr_w    = ((state_r == WORK) && (!i_deny)) ? ((add_r == LIMIT - 1) ? 0 : addr + 1) : addr_r;
 
 always@(negedge i_rst_n or posedge i_clk)begin: Flip-Flop
 	if(!i_rst_n)begin
