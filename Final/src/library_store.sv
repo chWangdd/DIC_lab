@@ -21,6 +21,7 @@ logic [10:0] counter_r, counter_w;
 
 localparam LIMIT = 5'b1_1010;
 localparam UNIT  = 11'b100_0000_0000;
+localparam UNTOUCHABLE = 15'b110_1100_0000_0000;
 
 always@(*)begin: FSM
 	state_w = state_r;
@@ -34,15 +35,15 @@ always@(*)begin: FSM
 	endcase
 end
 
-assign o_x    = ((state_r == WORK) && (i_valid)) ? i_x : 0;
-assign o_y    = ((state_r == WORK) && (i_valid)) ? i_y : 0;
-assign o_addr = {4'b0, addr_r, counter_r};
+assign o_x    = ((state_r == WORK) && (i_valid)) ? i_x : i_x;
+assign o_y    = ((state_r == WORK) && (i_valid)) ? i_y : i_x;
+assign o_addr = (state_r == WORK) ? {4'b0, addr_r, counter_r} : UNTOUCHABLE;
 
 assign counter_w = (state_r == IDLE) ? 0 : (i_valid) ? counter_r + 1 : counter_r;
 
-assign addr_w    = ((state_r == WORK) && (!i_deny)) ? ((add_r == LIMIT - 1) ? 0 : addr + 1) : addr_r;
+assign addr_w    = ((state_r == WORK) && (!i_deny)) ? ((addr_r == LIMIT - 1) ? 0 : addr_r + 1) : addr_r;
 
-always@(negedge i_rst_n or posedge i_clk)begin: Flip-Flop
+always@(negedge i_rst_n or posedge i_clk)begin: Flip_Flop
 	if(!i_rst_n)begin
 		state_r   <= IDLE;
 		addr_r    <= 0;
