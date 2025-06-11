@@ -34,9 +34,9 @@ always@(*)begin: FSM
 	endcase
 end
 
-assign o_x    = ((state_r == WORK) && (i_deny)) ? i_x : 0;
-assign o_y    = ((state_r == WORK) && (i_deny)) ? i_y : 0;
-assign o_addr = {5'b0, addr_r, counter_r};
+assign o_x    = ((state_r == WORK) && (i_valid)) ? i_x : 0;
+assign o_y    = ((state_r == WORK) && (i_valid)) ? i_y : 0;
+assign o_addr = {4'b0, addr_r, counter_r};
 
 assign counter_w = (state_r == IDLE) ? 0 : (i_valid) ? counter_r + 1 : counter_r;
 
