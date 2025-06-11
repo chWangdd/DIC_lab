@@ -21,7 +21,7 @@ logic signed [15:0] inter_r, inter_w;
 
 localparam IDLE = 2'b00, 
 		   WORK = 2'b01, 
-		   OUT  = 2'b11;;
+		   OUT  = 2'b11;
 
 assign VEC_X = vector_x;
 assign VEC_Y = vector_y;
