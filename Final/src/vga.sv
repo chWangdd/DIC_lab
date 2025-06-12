@@ -12,7 +12,8 @@ module VGAController (
   output [7:0] o_VGA_B,
   output o_V_sync,
   output o_H_sync,
-  output o_blank_n
+  output o_blank_n,
+  output o_request
 
 );
   `include "vga_param.sv"  
@@ -21,10 +22,12 @@ module VGAController (
   parameter S_Active = 2;
   parameter S_Fporch = 3;
 
+  parameter H_start = H_sync_pulse + H_back_porch;
+  parameter V_start = V_sync_pulse + V_back_porch;
   // Registers assignment
   reg [ 10:0] Hcnt_ff, Hcnt_comb; // count from 0~799
   reg [ 10:0] Vcnt_ff, Vcnt_comb; // count from 0~524
-  
+  reg request_ff, request_comb;
   reg [ 1:0] Hstate_ff, Hstate_comb, Vstate_ff, Vstate_comb;
   
   // Wires assignment
@@ -34,6 +37,8 @@ module VGAController (
   assign o_VGA_R = i_color[ 7: 0];
   assign o_VGA_G = i_color[15: 8];
   assign o_VGA_B = i_color[23:16];
+
+  assign o_request = request_ff;
   // Horizonal State Comb. Block
   always_comb begin
     // usual case
@@ -105,6 +110,19 @@ module VGAController (
           end
         end
       endcase
+    end
+  end
+
+  // Pixel lut address generator
+  always@(posedge i_clk or negedge i_rst_n) begin
+    if(!i_rst_n)
+      request <= 0;
+    else begin
+      if (Hcnt_ff>=H_start-2 && Hcnt_ff<H_start+H_active_area-2 &&
+        Vcnt_ff>=V_start && Vcnt_ff<V_start+V_active_area)
+        request <= 1;
+      else
+        request <= 0;
     end
   end
 
