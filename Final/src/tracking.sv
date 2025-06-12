@@ -179,13 +179,11 @@ module Tracker (
         end
       end
       S_UPDATE: begin
-        if (hold) begin
-          state_comb = S_IDLE;
-        end
-        else if ((Vcnt_ff == totalV) && (Hcnt_ff == totalH)) begin
-          state_comb = S_CAL1;
-          pointGenerated_comb = 0;
-        end
+        state_comb = S_IDLE;
+        pointGenerated_comb = 0;
+        // else if ((Vcnt_ff == totalV) && (Hcnt_ff == totalH)) begin
+        //   state_comb = S_CAL1;
+        // end
       end
       default: begin
         state_comb = state_ff;
@@ -438,7 +436,7 @@ module Tracker (
   end
   always_ff @(posedge i_clk or negedge i_rst_n) begin
     if (!i_rst_n) begin
-      Hcnt_ff <= 0;
+      Hcnt_ff <= 1;
       Vcnt_ff <= 1;
     end
     else begin
@@ -454,6 +452,10 @@ module Tracker (
           else
             Vcnt_ff <= 1;
         end
+      end
+      else if (state_ff == S_IDLE) begin
+        Vcnt_ff <= 1;
+        Hcnt_ff <= 1;
       end
       else begin
         Hcnt_ff <= Hcnt_ff;
