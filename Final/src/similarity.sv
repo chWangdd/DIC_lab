@@ -2,19 +2,19 @@ module similarity(
 	input i_clk, 
 	input i_rst_n,
 	input i_valid, // real time 60 fps valid vector signals
-	input [3:0] i_index, 
-	input [5:0] vector_x,
-	input [5:0] vector_y,
-	input [5:0] lib_x, 
-	input [5:0] lib_y, 
+	input [8:0] i_index, 
+	input [7:0] vector_x,
+	input [7:0] vector_y,
+	input [7:0] lib_x, 
+	input [7:0] lib_y, 
 	output o_valid, 
 	output o_index
 );
 
 logic 			[1:0] state_r, state_w;
 logic 			[8:0] counter_r, counter_w;
-logic signed 	[5:0] VEC_X, VEC_Y;
-logic signed 	[5:0] LIB_X, LIB_Y;
+logic signed 	[7:0] VEC_X, VEC_Y;
+logic signed 	[7:0] LIB_X, LIB_Y;
 logic 			[4:0] max_r, max_w;
 logic signed 	[15:0] max_sum_r, max_sum_w;
 logic signed 	[15:0] inter_r, inter_w;
@@ -22,6 +22,8 @@ logic signed 	[15:0] inter_r, inter_w;
 localparam IDLE = 2'b00, 
 		   WORK = 2'b01, 
 		   OUT  = 2'b11;
+
+localparam LIMIT = 9'd416;
 
 assign VEC_X = vector_x;
 assign VEC_Y = vector_y;
@@ -37,16 +39,18 @@ always@(*)begin: INTERMEDIATE
 		inter_w = VEC_X * LIB_X + VEC_Y * LIB_Y;
 	end
 	else if(state_r == WORK)begin
-		if(counter_r[8:4])begin
-			if(!counter[3:0])begin
-				inter_w = VEC_X * LIB_X + VEC_Y + LIB_Y;
+		if(i_valid)begin
+			if(counter_r[8:4])begin
+				if(!counter_r[3:0])begin
+					inter_w = VEC_X * LIB_X + VEC_Y + LIB_Y;
+				end
+				else begin
+					inter_w = inter_r + VEC_X * LIB_X + VEC_Y + LIB_Y;
+				end
 			end
 			else begin
 				inter_w = inter_r + VEC_X * LIB_X + VEC_Y + LIB_Y;
 			end
-		end
-		else begin
-			inter_w = inter_r + VEC_X * LIB_X + VEC_Y + LIB_Y;
 		end
 	end
 end
@@ -59,9 +63,13 @@ always@(*)begin: MAX_OUT
 		max_sum_w = 0;
 	end
 	else if(state_r == WORK)begin
-		if(counter_r && (!counter[3:0]))begin
+		if(counter_r == LIMIT)begin
+			max_sum_w = max_sum_r;
+			max_w = max_r;
+		end
+		else if(counter_r && (!counter_r[3:0]))begin
 			max_sum_w = (max_sum_r < inter_r) ? inter_r      : max_sum_r;
-			max_w     = (max_sum_r < inter_r) ? counter[8:4] : max_r;
+			max_w     = (max_sum_r < inter_r) ? counter_r[8:4] : max_r;
 		end
 	end
 end
@@ -73,7 +81,7 @@ always@(*)begin: FSM
 			state_w = (i_valid) ? WORK : IDLE;
 		end
 		WORK: begin
-			state_w = (counter_r == 9'd416) ? OUT : WORK;
+			state_w = (counter_r == LIMIT) ? OUT : WORK;
 		end
 		OUT: begin
 			state_w = IDLE;
@@ -82,7 +90,7 @@ always@(*)begin: FSM
 end
 
 always@(*)begin: Counter
-	counter_w = (state_r == WORK) ? counter_r + 1 : 0;
+	counter_w = ((state_r == WORK) && (i_valid)) ? counter_r + 1 : 0;
 end
 
 always@(negedge i_rst_n or posedge i_clk)begin: FF

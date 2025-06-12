@@ -1,6 +1,6 @@
-//******* VER_1 *********//
-//*******  0609  ********//
-//*******  1959  ********//
+//*****    VER_3    *****//
+//***** Date: 0609  *****//
+//***** Time: 1959  *****//
 
 module SRAM_Controller(
 
@@ -31,16 +31,16 @@ input i_clk;
 input i_rst_n;
 input mem_valid; 
 // Pins to Top Module 
-input  core_mem_w_value [15:0];
-input  core_mem_addr    [19:0];
+input [15:0] core_mem_w_value ;
+input [19:0] core_mem_addr    ;
 input  core_mem_wr  	 	  ;
 input  core_mem_request       ;
 
-output core_mem_r_value [15:0];
+output [15:0] core_mem_r_value ;
 output core_wait              ;
 
 // Pins to SRAM
-output o_SRAM_ADDR      [19:0];
+output [19:0] o_SRAM_ADDR      ;
 
 output o_SRAM_WE_N;
 output o_SRAM_CE_N;
@@ -48,7 +48,7 @@ output o_SRAM_OE_N;
 output o_SRAM_LB_N;
 output o_SRAM_UB_N;
 
-inout io_SRAM_DQ		[15:0];
+inout [15:0] io_SRAM_DQ;
 
 logic [3:0]  counter_r, counter_w;
 logic [8:0]  addr_count_r, addr_count_w;
@@ -56,6 +56,7 @@ logic [2:0]  state_r, state_w;
 logic [15:0] IN_DATA_w, IN_DATA_r;
 logic [19:0] IN_ADDR_w, IN_ADDR_r;
 logic [15:0] DATA_BACK_r, DATA_BACK_w;
+logic mem_valid;
 
 localparam IDLE        = 3'b000, 
 		   READ        = 3'b001,
@@ -64,7 +65,11 @@ localparam IDLE        = 3'b000,
 		   WRITE_BACK  = 3'b110, 
 		   RECOG_CTRL  = 3'b100;
 		   
+<<<<<<< HEAD
 localparam LIMIT = 4'b0111; // limit as mem access latency
+=======
+localparam LIMIT     = 4'b0111;
+>>>>>>> ba880791427d18550c9368900294eae109e2a4d1
 localparam LetterNum = 9'd416;
 
 assign o_SRAM_CE_N = 1'b0 ;
@@ -72,8 +77,16 @@ assign o_SRAM_OE_N = 1'b0 ;
 assign o_SRAM_LB_N = 1'b0 ;
 assign o_SRAM_UB_N = 1'b0 ;
 
-assign mem_valid = ((state_r == READ_BACK) || (state_r == WRITE_BACK) || ((state_r == RECOG_CTRL) && (counter_r == LIMIT + 1)));
-assign addr_count_w = ((state_r == RECOG_CTRL) && (addr_count_r < LetterNum) && (counter_r == LIMIT + 1)) ? addr_count_r + 1 : 0;
+assign mem_valid    = ((state_r == READ_BACK) || (state_r == WRITE_BACK) || ((state_r == RECOG_CTRL) && (counter_r == LIMIT + 1)));
+assign addr_count_w = ((state_r == RECOG_CTRL) && (addr_count_r < LetterNum) && (counter_r == LIMIT + 1)) ? addr_count_r + 1 : 9'b0;
+
+assign o_SRAM_ADDR  = (core_mem_request) ? core_mem_addr : (state_r == RECOG_CTRL) ? {5'b00000, addr_count_r[8:4],6'b000000 ,addr_count_r[3:0]} : IN_ADDR_r;
+assign io_SRAM_DQ   = (state_r == WRITE) ? IN_DATA_r     :     16'dz;
+assign o_SRAM_WE_N  = (state_r == WRITE) ? 1'b0          :     	1'b1;
+
+assign core_mem_r_value = DATA_BACK_r;
+assign DATA_BACK_w      = ((state_r == READ) || (state_r == RECOG_CTRL))  ? io_SRAM_DQ: DATA_BACK_r;   
+assign core_wait        = ((state_r == READ) || (state_r == WRITE) || ((state_r == RECOG_CTRL) && (counter_r < LetterNum)));
 
 always@(*)begin: FSM
 	state_w = state_r;
@@ -106,7 +119,7 @@ end
 
 always@(*)begin: Counter_Assignment
 	counter_w = counter_r;
-	if(state_r == PROCESS)begin
+	if((state_r == READ) || (state_r == WRITE))begin
 		counter_w = (counter_r == LIMIT + 1) ? 0 : counter_r + 1;
 	end
 	else begin
@@ -119,6 +132,7 @@ always@(*)begin: Input_Capture
 	IN_ADDR_w = (core_mem_request) ? core_mem_addr    : IN_ADDR_r;
 end
 
+<<<<<<< HEAD
 assign o_SRAM_ADDR  = (core_mem_request) ? core_mem_addr : (state_r == RECOG_CTRL) ? {11'b0, addr_count_r} : IN_ADDR_r;
 assign io_SRAM_DQ   = (state_r == WRITE) ? IN_DATA_r     :     16'dz;
 assign o_SRAM_WE_N  = (state_r == WRITE) ? 1'b0          :     	1'b1;
@@ -129,6 +143,10 @@ assign core_wait        = ((state_r == READ) || (state_r == WRITE) || ((state_r 
 
 always@(posedge i_clk or negedge i_rst_n)begin: Flip_Flop
 	if(!i_rst_n)begin
+=======
+always@(posedge i_clk or negedge i_rst)begin: Flip_Flop
+	if(!i_rst)begin
+>>>>>>> ba880791427d18550c9368900294eae109e2a4d1
 		state_r   	 <= IDLE;
 		counter_r 	 <= 0;
 		IN_DATA_r 	 <= 0;
