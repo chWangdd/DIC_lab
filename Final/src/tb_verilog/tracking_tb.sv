@@ -63,14 +63,16 @@ module Tracking_tb;
       #(CLK);
       pixelVAL = 0;
       #(2*CLK);
+      @(posedge trackedVAL);
+      $display("frame%d, H:%d, V:%d",i, pointH, pointV);
       if (trackedVAL) begin
-        $display(pointH, pointV);
         $display("==============");
         $display("   finished   ");
         $display("==============");
         $fclose(data_file);
         $finish;
       end
+      
     end
     $fclose(data_file);
     $display("Data transmission is finished");
