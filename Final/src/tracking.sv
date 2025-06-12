@@ -54,8 +54,8 @@ module Tracker (
   wire [ 7:0] iB_G, iB_R;
   wire [`rangeH-1: 0] SF_valid1;
   wire [`rangeH-1: 0] SF_valid2;
-  wire [ 7:0] SF_sum1 [0:`rangeH-1];
-  wire [ 7:0] SF_sum2 [0:`rangeH-1];
+  wire [10:0] SF_sum1 [0:`rangeH-1];
+  wire [10:0] SF_sum2 [0:`rangeH-1];
 
   wire [ 9:0] SF_startH1 [0: `rangeH-1];
   wire [ 9:0] SF_startV1 [0: `rangeH-1];
@@ -399,8 +399,8 @@ module Tracker (
         prePointV_comb <= maxPointV_ff;
         SF_reset1_comb <= {`rangeH{1'b1}};
         SF_reset2_comb <= {`rangeH{1'b1}};
-        startH_comb <= maxPointH_ff - `subFrameH * 3;
-        startV_comb <= maxPointV_ff - `subFrameV * 3;
+        startH_comb <= maxPointH_ff - `overlapH * 3;
+        startV_comb <= maxPointV_ff - `overlapV * 3;
         for (j = 0; j < `rangeH; j = j + 1) begin
           SF_startOffsetH1_comb[j] <= `overlapH * j; // notice:
           SF_startOffsetV1_comb[j] <= 0;        
@@ -432,8 +432,8 @@ module Tracker (
     if (!i_rst_n) begin
       state_ff         <= S_RESET;
       // pixelGrade_ff    <= 0;
-      prePointH_ff     <= {0, totalH[8:0]};
-      prePointV_ff     <= {0, totalV[8:0]};
+      prePointH_ff     <= totalH_half;
+      prePointV_ff     <= totalV_half;
       maxPointH_ff     <= 0;
       maxPointV_ff     <= 0;
       maxPointValue_ff <= 0;
@@ -441,8 +441,8 @@ module Tracker (
       // Vcnt_ff          <= 1;
       SF_reset1_ff     <= {`rangeH{1'b1}};
       SF_reset2_ff     <= {`rangeH{1'b1}};
-      startH_ff        <= totalH_half - `subFrameH * 2; // notice
-      startV_ff        <= totalV_half - `subFrameV * 2;
+      startH_ff        <= totalH_half - `overlapH * 3; // notice
+      startV_ff        <= totalV_half - `overlapV * 3;
       // pixelGradeVAL_ff <= 0;
       for (i = 0; i < `rangeH; i = i + 1) begin
         SF_startOffsetH1_ff[i] <= `overlapH * i;
@@ -493,7 +493,7 @@ module staticFrame (
   reg [14:0] acc_ff, acc_comb;
   reg valid_ff, valid_comb;
   
-  assign o_sum = acc_ff[ 11:4];  // 要除多少??
+  assign o_sum = acc_ff[ 14:4];  // 要除多少??
   assign o_valid = valid_ff;
   
   always_comb begin
