@@ -171,6 +171,8 @@ module Tracker (
           state_comb = S_UPDATE;
           pointGenerated_comb = 1;
         end
+        else if (Vcnt_ff == totalV && Hcnt_ff == totalH - 1)
+          state_comb = S_UPDATE;
         else begin 
           state_comb = state_ff;
           pointGenerated_comb = pointGenerated_ff;
@@ -355,16 +357,18 @@ module Tracker (
       end
       S_UPDATE: begin // update the previous point and the next detecting range
         maxPointValue_comb = 0;
-        prePointH_comb = maxPointH_ff;
-        prePointV_comb = maxPointV_ff;
+        if (maxPointValue_ff > 0) begin
+          prePointH_comb = maxPointH_ff;
+          prePointV_comb = maxPointV_ff;
+          startH_comb = (maxPointH_ff < 96 ) ? 0: 
+                        (maxPointH_ff > 416) ? totalH - `possibleH:
+                                              maxPointH_ff - 96;
+          startV_comb = (maxPointV_ff < 96 ) ? 0: 
+                        (maxPointV_ff > 256) ? totalV - `possibleV:
+                                              maxPointV_ff - 96;
+        end
         SF_reset1_comb = {`rangeH{1'b1}};
         SF_reset2_comb = {`rangeH{1'b1}};
-        startH_comb = (maxPointH_ff < 96 ) ? 0: 
-                      (maxPointH_ff > 416) ? totalH - `possibleH:
-                                             maxPointH_ff - 96;
-        startV_comb = (maxPointV_ff < 96 ) ? 0: 
-                      (maxPointV_ff > 256) ? totalV - `possibleV:
-                                             maxPointV_ff - 96;
         for (j = 0; j < `rangeH; j = j + 1) begin
           SF_startOffsetV1_comb[j] = 0;        
           SF_startOffsetV2_comb[j] = `overlapV;        
@@ -415,9 +419,9 @@ module Tracker (
     else begin
       if (i_pixelVAL) begin
         if (iB_R > iB_G)
-          pixelGrade_ff <= {(iB_G > 40), 1'b0};
+          pixelGrade_ff <= {(iB_G > 16), 1'b0};
         else if (iB_G > iB_R)
-          pixelGrade_ff <= {(iB_R > 40), 1'b0};
+          pixelGrade_ff <= {(iB_R > 16), 1'b0};
         else if (iR_G > iR_B)
           pixelGrade_ff <= {1'b0, (iR_B > 90)};
         else if (iR_B > iR_G)
