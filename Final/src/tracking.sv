@@ -22,14 +22,20 @@ module Tracker (
   localparam S_CAL0  = 1; // preious Point is (0,0)  
   localparam S_CAL1  = 2; // general case
   localparam S_UPDATE= 3; // there is a tracking point be generated
-  
+  localparam InitH0 = 0;
+  localparam InitH1 = `overlapH*1;
+  localparam InitH2 = `overlapH*2;
+  localparam InitH3 = `overlapH*3;
+  localparam InitH4 = `overlapH*4;
+  localparam InitH5 = `overlapH*5;
+  localparam InitH6 = `overlapH*6;
+
   // =========================================
   // Reg/Wire Declaration
   // =========================================
   reg [ 1:0] state_ff, state_comb;
   reg [ 1:0] pixelGrade_ff;
   reg pixelGradeVAL_ff;
-  reg updateTriggered_ff, updateTriggered_comb;
   reg [14:0] maxPointH_ff, maxPointH_comb, maxPointV_ff, maxPointV_comb; // candidate point
   reg [14:0] maxPointValue_ff, maxPointValue_comb;                        // value of candidate point
   reg [14:0] prePointH_ff, prePointH_comb, prePointV_ff, prePointV_comb;  // previous tracked point
@@ -44,13 +50,9 @@ module Tracker (
   // control signal for static frames
   reg [`rangeH-1: 0] SF_reset1_ff, SF_reset1_comb;
   reg [`rangeH-1: 0] SF_reset2_ff, SF_reset2_comb;
-  reg [ 8:0] SF_startOffsetH1_ff [0: `rangeH-1];    // notice: it will overflow when the range is bigger (current is 32*7=224)
   reg [ 8:0] SF_startOffsetV1_ff [0: `rangeH-1];    // notice: it will overflow when the range is bigger (current is 32*7=224)
-  reg [ 8:0] SF_startOffsetH1_comb [0: `rangeH-1];    // notice: it will overflow when the range is bigger (current is 32*7=224)
   reg [ 8:0] SF_startOffsetV1_comb [0: `rangeH-1];    // notice: it will overflow when the range is bigger (current is 32*7=224)
-  reg [ 8:0] SF_startOffsetH2_ff [0: `rangeH-1];    // notice: it will overflow when the range is bigger (current is 32*7=224)
   reg [ 8:0] SF_startOffsetV2_ff [0: `rangeH-1];    // notice: it will overflow when the range is bigger (current is 32*7=224)
-  reg [ 8:0] SF_startOffsetH2_comb [0: `rangeH-1];    // notice: it will overflow when the range is bigger (current is 32*7=224)
   reg [ 8:0] SF_startOffsetV2_comb [0: `rangeH-1];    // notice: it will overflow when the range is bigger (current is 32*7=224)
   reg pointGenerated_ff, pointGenerated_comb;
   reg isTracking;
@@ -65,7 +67,7 @@ module Tracker (
   wire [ 7:0] SF_sum2 [0:`rangeH-1];
   wire [`rangeH-1: 0] findRed1;
   wire [`rangeH-1: 0] findRed2;
-
+  wire [ 8:0] SF_startOffsetH [0: `rangeH-1];
   wire [ 9:0] SF_startH1 [0: `rangeH-1];
   wire [ 9:0] SF_startV1 [0: `rangeH-1];
   wire [ 9:0] SF_startH2 [0: `rangeH-1];
@@ -87,12 +89,19 @@ module Tracker (
   assign o_isTracking = isTracking;
   assign o_pointH = maxPointH_ff[9:5];
   assign o_pointV = maxPointV_ff[9:5];
+  assign SF_startOffsetH[0] = InitH0;
+  assign SF_startOffsetH[1] = InitH1;
+  assign SF_startOffsetH[2] = InitH2;
+  assign SF_startOffsetH[3] = InitH3;
+  assign SF_startOffsetH[4] = InitH4;
+  assign SF_startOffsetH[5] = InitH5;
+  assign SF_startOffsetH[6] = InitH6;
   genvar n;
   generate
     for (n = 0; n < `rangeH ; n = n + 1) begin : letgo
-      assign SF_startH1[n] = startH_ff + SF_startOffsetH1_ff[n];
+      assign SF_startH1[n] = startH_ff + SF_startOffsetH[n];
       assign SF_startV1[n] = startV_ff + SF_startOffsetV1_ff[n];
-      assign SF_startH2[n] = startH_ff + SF_startOffsetH2_ff[n];
+      assign SF_startH2[n] = startH_ff + SF_startOffsetH[n];
       assign SF_startV2[n] = startV_ff + SF_startOffsetV2_ff[n];
     end
   endgenerate
@@ -146,7 +155,6 @@ module Tracker (
   always_comb begin : state
     state_comb = state_ff;
     pointGenerated_comb = pointGenerated_ff;
-    updateTriggered_comb = updateTriggered_ff;
     case (state_ff)
       S_IDLE: begin
         if (i_start)
@@ -158,11 +166,10 @@ module Tracker (
       S_CAL1: begin
         if (hold)
           state_comb = S_IDLE;
-        else if((!updateTriggered_ff && (SF_startV1[`rangeH-1] > (startV_ff + `possibleV)) || (SF_startV2[`rangeH-1] > startV_ff + `possibleV) ||
-                 SF_startV1[`rangeH-1] > totalV || SF_startV2[`rangeH-1] > totalV)) begin //after a frame
+        else if( (SF_startV1[`rangeH-1] > (startV_ff + `possibleV)) || (SF_startV2[`rangeH-1] > startV_ff + `possibleV) ||
+                 SF_startV1[`rangeH-1] > totalV || SF_startV2[`rangeH-1] > totalV) begin //after a frame
           state_comb = S_UPDATE;
           pointGenerated_comb = 1;
-          updateTriggered_comb = 1;
         end
         else begin 
           state_comb = state_ff;
@@ -176,13 +183,11 @@ module Tracker (
         else if ((Vcnt_ff == totalV) && (Hcnt_ff == totalH)) begin
           state_comb = S_CAL1;
           pointGenerated_comb = 0;
-          updateTriggered_comb = 0;
         end
       end
       default: begin
         state_comb = state_ff;
         pointGenerated_comb = pointGenerated_ff;
-        updateTriggered_comb = updateTriggered_ff;
       end
     endcase
   end
@@ -198,9 +203,7 @@ module Tracker (
     startH_comb = startH_ff;
     startV_comb = startV_ff;
     for (j = 0; j < `rangeH; j = j + 1) begin
-      SF_startOffsetH1_comb[j] = SF_startOffsetH1_ff[j];
       SF_startOffsetV1_comb[j] = SF_startOffsetV1_ff[j];        
-      SF_startOffsetH2_comb[j] = SF_startOffsetH2_ff[j];
       SF_startOffsetV2_comb[j] = SF_startOffsetV2_ff[j];        
     end
 
@@ -219,149 +222,133 @@ module Tracker (
           SF_reset1_comb = {`rangeH{1'b1}};
           SF_reset2_comb = {`rangeH{1'b1}};
           for (j = 0; j < `rangeH; j = j + 1) begin
-            SF_startOffsetH1_comb[j] = `overlapH * j; // notice:
             SF_startOffsetV1_comb[j] = 0;        
-            SF_startOffsetH2_comb[j] = `overlapH * j; // notice:
             SF_startOffsetV2_comb[j] = `overlapV;        
           end
         end 
-        else if (SF_valid1[0] && (SF_startOffsetV1_ff[0] <= (startV_ff + `possibleV))) begin // update the max point
+        else if (SF_valid1[0] && (SF_startV1[0] <= (startV_ff + `possibleV))) begin // update the max point
           if (maxPointValue_ff < SF_sum1[0]) begin
             maxPointH_comb = SF_startH1[0];
             maxPointV_comb = SF_startV1[0];
             maxPointValue_comb = SF_sum1[0];
           end
-          SF_startOffsetH1_comb[0] = SF_startOffsetH1_ff[0];
           SF_startOffsetV1_comb[0] = SF_startOffsetV1_ff[0] + `subFrameV;
           SF_reset1_comb[0] = 1;
         end   
-        else if (SF_valid1[1] && (SF_startOffsetV1_ff[1] <= (startV_ff + `possibleV))) begin
+        else if (SF_valid1[1] && (SF_startV1[1] <= (startV_ff + `possibleV))) begin
           if (maxPointValue_ff < SF_sum1[1]) begin
             maxPointH_comb = SF_startH1[1];
             maxPointV_comb = SF_startV1[1];
             maxPointValue_comb = SF_sum1[1];
           end
           SF_startOffsetV1_comb[1] = SF_startOffsetV1_ff[1] + `subFrameV;
-          SF_startOffsetH1_comb[1] = SF_startOffsetH1_ff[1];
           SF_reset1_comb[1] = 1;
         end   
-        else if (SF_valid1[2] && (SF_startOffsetV1_ff[2] <= (startV_ff + `possibleV))) begin
+        else if (SF_valid1[2] && (SF_startV1[2] <= (startV_ff + `possibleV))) begin
           if (maxPointValue_ff < SF_sum1[2]) begin
             maxPointH_comb = SF_startH1[2];
             maxPointV_comb = SF_startV1[2];
             maxPointValue_comb = SF_sum1[2];
           end
-          SF_startOffsetH1_comb[2] = SF_startOffsetH1_ff[2];
           SF_startOffsetV1_comb[2] = SF_startOffsetV1_ff[2] + `subFrameV;
           SF_reset1_comb[2] = 1;
         end
-        else if (SF_valid1[3] && (SF_startOffsetV1_ff[3] <= (startV_ff + `possibleV))) begin
+        else if (SF_valid1[3] && (SF_startV1[3] <= (startV_ff + `possibleV))) begin
           if (maxPointValue_ff < SF_sum1[3]) begin
             maxPointH_comb = SF_startH1[3];
             maxPointV_comb = SF_startV1[3];
             maxPointValue_comb = SF_sum1[3];
           end
           SF_startOffsetV1_comb[3] = SF_startOffsetV1_ff[3] + `subFrameV;
-          SF_startOffsetH1_comb[3] = SF_startOffsetH1_ff[3];
           SF_reset1_comb[3] = 1;
         end   
-        else if (SF_valid1[4] && (SF_startOffsetV1_ff[4] <= (startV_ff + `possibleV))) begin
+        else if (SF_valid1[4] && (SF_startV1[4] <= (startV_ff + `possibleV))) begin
           if (maxPointValue_ff < SF_sum1[4]) begin
             maxPointH_comb = SF_startH1[4];
             maxPointV_comb = SF_startV1[4];
             maxPointValue_comb = SF_sum1[4];
           end
           SF_startOffsetV1_comb[4] = SF_startOffsetV1_ff[4] + `subFrameV;
-          SF_startOffsetH1_comb[4] = SF_startOffsetH1_ff[4];
           SF_reset1_comb[4] = 1;
         end   
-        else if (SF_valid1[5] && (SF_startOffsetV1_ff[5] <= (startV_ff + `possibleV))) begin
+        else if (SF_valid1[5] && (SF_startV1[5] <= (startV_ff + `possibleV))) begin
           if (maxPointValue_ff < SF_sum1[5]) begin
             maxPointH_comb = SF_startH1[5];
             maxPointV_comb = SF_startV1[5];
             maxPointValue_comb = SF_sum1[5];
           end
-          SF_startOffsetH1_comb[5] = SF_startOffsetH1_ff[5];
           SF_startOffsetV1_comb[5] = SF_startOffsetV1_ff[5] + `subFrameV;
           SF_reset1_comb[5] = 1;
         end   
-        else if (SF_valid1[6] && (SF_startOffsetV1_ff[6] <= (startV_ff + `possibleV))) begin
+        else if (SF_valid1[6] && (SF_startV1[6] <= (startV_ff + `possibleV))) begin
           if (maxPointValue_ff < SF_sum1[6]) begin
             maxPointH_comb = SF_startH1[6];
             maxPointV_comb = SF_startV1[6];
             maxPointValue_comb = SF_sum1[6];
           end
           SF_startOffsetV1_comb[6] = SF_startOffsetV1_ff[6] + `subFrameV;
-          SF_startOffsetH1_comb[6] = SF_startOffsetH1_ff[6];
           SF_reset1_comb[6] = 1;
         end
-        else if (SF_valid2[0] && (SF_startOffsetV2_ff[0] <= (startV_ff + `possibleV))) begin
+        else if (SF_valid2[0] && (SF_startV2[0] <= (startV_ff + `possibleV))) begin
           if (maxPointValue_ff < SF_sum2[0]) begin
             maxPointH_comb = SF_startH2[0];
             maxPointV_comb = SF_startV2[0];
             maxPointValue_comb = SF_sum2[0];
           end
-          SF_startOffsetH2_comb[0] = SF_startOffsetH2_ff[0];
           SF_startOffsetV2_comb[0] = SF_startOffsetV2_ff[0] + `subFrameV;
           SF_reset2_comb[0] = 1;
         end   
-        else if (SF_valid2[1] && (SF_startOffsetV2_ff[1] <= (startV_ff + `possibleV))) begin
+        else if (SF_valid2[1] && (SF_startV2[1] <= (startV_ff + `possibleV))) begin
           if (maxPointValue_ff < SF_sum2[1]) begin
             maxPointH_comb = SF_startH2[1];
             maxPointV_comb = SF_startV2[1];
             maxPointValue_comb = SF_sum2[1];
           end
           SF_startOffsetV2_comb[1] = SF_startOffsetV2_ff[1] + `subFrameV;
-          SF_startOffsetH2_comb[1] = SF_startOffsetH2_ff[1];
           SF_reset2_comb[1] = 1;
         end   
-        else if (SF_valid2[2] && (SF_startOffsetV2_ff[2] <= (startV_ff + `possibleV))) begin
+        else if (SF_valid2[2] && (SF_startV2[2] <= (startV_ff + `possibleV))) begin
           if (maxPointValue_ff < SF_sum2[2]) begin
             maxPointH_comb = SF_startH2[2];
             maxPointV_comb = SF_startV2[2];
             maxPointValue_comb = SF_sum2[2];
           end
-          SF_startOffsetH2_comb[2] = SF_startOffsetH2_ff[2];
           SF_startOffsetV2_comb[2] = SF_startOffsetV2_ff[2] + `subFrameV;
           SF_reset2_comb[2] = 1;
         end   
-        else if (SF_valid2[3] && (SF_startOffsetV2_ff[3] <= (startV_ff + `possibleV))) begin
+        else if (SF_valid2[3] && (SF_startV2[3] <= (startV_ff + `possibleV))) begin
           if (maxPointValue_ff < SF_sum2[3]) begin
             maxPointH_comb = SF_startH2[3];
             maxPointV_comb = SF_startV2[3];
             maxPointValue_comb = SF_sum2[3];
           end
-          SF_startOffsetH2_comb[3] = SF_startOffsetH2_ff[3];
           SF_startOffsetV2_comb[3] = SF_startOffsetV2_ff[3] + `subFrameV;
           SF_reset2_comb[3] = 1;
         end   
-        else if (SF_valid2[4] && (SF_startOffsetV2_ff[4] <= (startV_ff + `possibleV))) begin
+        else if (SF_valid2[4] && (SF_startV2[4] <= (startV_ff + `possibleV))) begin
           if (maxPointValue_ff < SF_sum2[4]) begin
             maxPointH_comb = SF_startH2[4];
             maxPointV_comb = SF_startV2[4];
             maxPointValue_comb = SF_sum2[4];
           end
-          SF_startOffsetH2_comb[4] = SF_startOffsetH2_ff[4];
           SF_startOffsetV2_comb[4] = SF_startOffsetV2_ff[4] + `subFrameV;
           SF_reset2_comb[4] = 1;
         end   
-        else if (SF_valid2[5] && (SF_startOffsetV2_ff[5] <= (startV_ff + `possibleV))) begin
+        else if (SF_valid2[5] && (SF_startV2[5] <= (startV_ff + `possibleV))) begin
           if (maxPointValue_ff < SF_sum2[5]) begin
             maxPointH_comb = SF_startH2[5];
             maxPointV_comb = SF_startV2[5];
             maxPointValue_comb = SF_sum2[5];
           end
-          SF_startOffsetH2_comb[5] = SF_startOffsetH2_ff[5];
           SF_startOffsetV2_comb[5] = SF_startOffsetV2_ff[5] + `subFrameV;
           SF_reset2_comb[5] = 1;
         end   
-        else if (SF_valid2[6] && (SF_startOffsetV2_ff[6] <= (startV_ff + `possibleV))) begin
+        else if (SF_valid2[6] && (SF_startV2[6] <= (startV_ff + `possibleV))) begin
           if (maxPointValue_ff < SF_sum2[6]) begin
             maxPointH_comb = SF_startH2[6];
             maxPointV_comb = SF_startV2[6];
             maxPointValue_comb = SF_sum2[6];
           end
-          SF_startOffsetH2_comb[6] = SF_startOffsetH2_ff[6];
           SF_startOffsetV2_comb[6] = SF_startOffsetV2_ff[6] + `subFrameV;
           SF_reset2_comb[6] = 1;
         end
@@ -372,12 +359,14 @@ module Tracker (
         prePointV_comb = maxPointV_ff;
         SF_reset1_comb = {`rangeH{1'b1}};
         SF_reset2_comb = {`rangeH{1'b1}};
-        startH_comb = maxPointH_ff - `overlapH * 3;
-        startV_comb = maxPointV_ff - `overlapV * 3;
+        startH_comb = (maxPointH_ff < 96 ) ? 0: 
+                      (maxPointH_ff > 416) ? totalH - `possibleH:
+                                             maxPointH_ff - 96;
+        startV_comb = (maxPointV_ff < 96 ) ? 0: 
+                      (maxPointV_ff > 256) ? totalV - `possibleV:
+                                             maxPointV_ff - 96;
         for (j = 0; j < `rangeH; j = j + 1) begin
-          SF_startOffsetH1_comb[j] = `overlapH * j; // notice:
           SF_startOffsetV1_comb[j] = 0;        
-          SF_startOffsetH2_comb[j] = `overlapH * j; // notice:
           SF_startOffsetV2_comb[j] = `overlapV;        
         end      
       end
@@ -388,9 +377,7 @@ module Tracker (
         prePointH_comb = prePointH_ff;
         prePointV_comb = prePointV_ff;  
         for (j = 0; j < `rangeH; j = j + 1) begin
-          SF_startOffsetH1_comb[j] = SF_startOffsetH1_ff[j];
           SF_startOffsetV1_comb[j] = SF_startOffsetV1_ff[j];        
-          SF_startOffsetH2_comb[j] = SF_startOffsetH2_ff[j];
           SF_startOffsetV2_comb[j] = SF_startOffsetV2_ff[j];        
         end
       end      
@@ -488,49 +475,35 @@ module Tracker (
   always_ff @(posedge i_clk or negedge i_rst_n) begin
     if (!i_rst_n) begin
       state_ff         <= S_IDLE;
-      // pixelGrade_ff    <= 0;
       prePointH_ff     <= totalH_half;
       prePointV_ff     <= totalV_half;
       maxPointH_ff     <= 0;
       maxPointV_ff     <= 0;
       maxPointValue_ff <= 0;
-      // Hcnt_ff          <= 1;
-      // Vcnt_ff          <= 1;
       SF_reset1_ff     <= {`rangeH{1'b1}};
       SF_reset2_ff     <= {`rangeH{1'b1}};
       startH_ff        <= totalH_half - `overlapH * 3; // notice
       startV_ff        <= totalV_half - `overlapV * 3;
       pointGenerated_ff  <= 0;
-      updateTriggered_ff <= 0;
-      // pixelGradeVAL_ff <= 0;
       for (i = 0; i < `rangeH; i = i + 1) begin
-        SF_startOffsetH1_ff[i] <= `overlapH * i;
         SF_startOffsetV1_ff[i] <= 0;
-        SF_startOffsetH2_ff[i] <= `overlapH * i;
         SF_startOffsetV2_ff[i] <= `overlapV;
       end
     end
     else begin
       state_ff         <= state_comb;
-      // pixelGrade_ff    <= pixelGrade_comb;
       prePointH_ff     <= prePointH_comb;
       prePointV_ff     <= prePointV_comb;
       maxPointH_ff     <= maxPointH_comb;
       maxPointV_ff     <= maxPointV_comb;
       maxPointValue_ff <= maxPointValue_comb;
-      // Hcnt_ff          <= Hcnt_comb;
-      // Vcnt_ff          <= Vcnt_comb;
       SF_reset1_ff     <= SF_reset1_comb;
       SF_reset2_ff     <= SF_reset2_comb;
       startH_ff        <= startH_comb;
       startV_ff        <= startV_comb;
-      // pixelGradeVAL_ff <= (i_pixelVAL)? 1: 0;
       pointGenerated_ff  <= pointGenerated_comb;
-      updateTriggered_ff <= updateTriggered_comb;
       for (i = 0; i < `rangeH; i = i + 1) begin
-        SF_startOffsetH1_ff[i] <= SF_startOffsetH1_comb[i];
         SF_startOffsetV1_ff[i] <= SF_startOffsetV1_comb[i];        
-        SF_startOffsetH2_ff[i] <= SF_startOffsetH2_comb[i];
         SF_startOffsetV2_ff[i] <= SF_startOffsetV2_comb[i];        
       end
     end
