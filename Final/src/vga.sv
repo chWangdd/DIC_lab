@@ -27,7 +27,7 @@ module VGAController (
   // Registers assignment
   reg [ 10:0] Hcnt_ff, Hcnt_comb; // count from 0~799
   reg [ 10:0] Vcnt_ff, Vcnt_comb; // count from 0~524
-  reg request_ff, request_comb;
+  reg request;
   reg [ 1:0] Hstate_ff, Hstate_comb, Vstate_ff, Vstate_comb;
   
   // Wires assignment
@@ -38,7 +38,7 @@ module VGAController (
   assign o_VGA_G = i_color[15: 8];
   assign o_VGA_B = i_color[23:16];
 
-  assign o_request = request_ff;
+  assign o_request = request;
   // Horizonal State Comb. Block
   always_comb begin
     // usual case
