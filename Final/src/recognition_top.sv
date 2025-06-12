@@ -8,8 +8,12 @@ module recognition_top(
     i_recognize, // key2
     break_point,
     i_endall, // key3
+    // New added Outputs
+    CE_N,
+    OE_N,
+    LB_N,
+    UB_N
     //input_timing
-
 );
 
 input i_clk ;
@@ -25,6 +29,12 @@ input i_recognize ;
 
 input break_point ; // i_deny
 
+// New added ports
+
+output CE_N ;
+output OE_N ;
+output LB_N ;
+output UB_N ;
 
 //input  core_mem_r_value [15:0] ;
 //output core_mem_w_value [15:0] ;
@@ -258,11 +268,11 @@ SRAM_Controller sc1(
 .core_wait(),
 .o_SRAM_ADDR(),
 .o_SRAM_WE_N(),
-.o_SRAM_CE_N(),
-.o_SRAM_OE_N(),
-.o_SRAM_LB_N(),
-.o_SRAM_UB_N(),
-	
+.o_SRAM_CE_N(CE_N),
+.o_SRAM_OE_N(OE_N),
+.o_SRAM_LB_N(LB_N),
+.o_SRAM_UB_N(UB_N),
+
 // Inout
 .io_SRAM_DQ(sram_dq)
 );
