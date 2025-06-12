@@ -18,7 +18,8 @@ module Top (
   output [7:0] o_VGA_B,
   output o_V_sync,
   output o_H_sync,
-  output o_VGA_BLANK_N
+  output o_VGA_BLANK_N,
+  output o_request
 
 );
   logic sending_r, sending_w;
@@ -33,7 +34,8 @@ module Top (
     .o_VGA_R(o_VGA_R),
     .o_V_sync(o_V_sync),
     .o_H_sync(o_H_sync),
-    .o_blank_n(o_VGA_BLANK_N)
+    .o_blank_n(o_VGA_BLANK_N),
+    .o_request(o_request)
   );
   // for test the vga protocol
   always @(*) begin

@@ -154,6 +154,7 @@ module DE2_115 (
 // ===================================================
 logic key0down, key1down, key2down;
 logic CLK_25M;
+logic CLK_100M;
 
 logic	[15:0]	Read_DATA1;
 logic	[15:0]	Read_DATA2;
@@ -198,6 +199,8 @@ logic SDRAM_W_clk, SDRAM_W_en;
 //=======================================================
 assign VGA_SYNC_N = 1'b0;
 assign VGA_CLK = CLK_25M;
+assign D5M_XCLKIN = CLK_25M;
+assign sdram_ctrl_clk = CLK_100M;
 // D5M
 assign	D5M_TRIGGER	=	1'b1;  // tRIGGER
 assign	D5M_RESET_N	=	DLY_RST_1;
@@ -245,7 +248,8 @@ end
 Altpll pll0( // generate with qsys, please follow lab2 tutorials
 	.clk_clk(CLOCK_50),
 	.reset_reset_n(KEY[3]),
-	.altpll_25m_clk(CLK_25M)
+	.altpll_25m_clk(CLK_25M),
+	.altpll_100m_clk(CLK_100M),
 );
 // sdram_pll 			u6	(
 // 							.inclk0(CLOCK2_50),
@@ -294,7 +298,8 @@ Top top0(
 	.o_VGA_B(VGA_B),
 	.o_V_sync(VGA_VS),
 	.o_H_sync(VGA_HS),
-	.o_VGA_BLANK_N(VGA_BLANK_N)
+	.o_VGA_BLANK_N(VGA_BLANK_N),
+	.o_request(READ)
 );
 
 Sdram_Control	u7	(	//	HOST Side						
