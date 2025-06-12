@@ -1,4 +1,4 @@
-`include "vga_param.sv"
+`define VGA_640x480p60 1
 
 module DE2_115 (
 	input CLOCK_50,
@@ -210,9 +210,9 @@ assign	LEDG		=	Y_Cont;
 assign	UART_TXD = UART_RXD;
 
 //fetch the high 8 bits
-assign  VGA_R = oVGA_R[9:2];
-assign  VGA_G = oVGA_G[9:2];
-assign  VGA_B = oVGA_B[9:2];
+//assign  VGA_R = oVGA_R[9:2];
+//assign  VGA_G = oVGA_G[9:2];
+//assign  VGA_B = oVGA_B[9:2];
 
 
 // comment those are use for display
@@ -364,12 +364,12 @@ CCD_Capture			u3	(	.oDATA(mCCD_DATA),
 							.iLVAL(rCCD_LVAL),
 							.iSTART(!KEY[3]|auto_start),
 							.iEND(!KEY[2]),
-							.iCLK(~D5M_PIXLCLK),
+							.iCLK(~D5M_PIXLCLK), // missing 
 							.iRST(DLY_RST_2)
 						);
 //D5M I2C control
 I2C_CCD_Config 		u8	(	//	Host Side
-							.iCLK(CLOCK2_50),
+							.iCLK(CLOCK2_50), // missing 
 							.iRST_N(DLY_RST_2),
 							.iEXPOSURE_ADJ(KEY[1]),
 							.iEXPOSURE_DEC_p(SW[0]),
@@ -379,7 +379,7 @@ I2C_CCD_Config 		u8	(	//	Host Side
 							.I2C_SDAT(D5M_SDATA)
 						);
 //D5M raw date convert to RGB data
-RAW2RGB				u4	(	.iCLK(D5M_PIXLCLK),
+RAW2RGB				u4	(	.iCLK(D5M_PIXLCLK), // missing 
 							.iRST(DLY_RST_1),
 							.iDATA(mCCD_DATA),
 							.iDVAL(mCCD_DVAL),

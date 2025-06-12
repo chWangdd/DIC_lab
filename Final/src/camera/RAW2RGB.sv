@@ -39,7 +39,7 @@
 //   Ver  :| Author            :| Mod. Date :| 		Changes Made:
 //   V1.0 :| Johnny Fan        :| 07/08/01  :|      Initial Revision
 // --------------------------------------------------------------------
-`include "vga_param.sv"
+`include "VGA_Param.h"
 `ifdef VGA_640x480p60
 module RAW2RGB(	oRed,
 				oGreen,

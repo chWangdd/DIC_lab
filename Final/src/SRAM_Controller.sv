@@ -29,7 +29,7 @@ io_SRAM_DQ
 
 input i_clk;
 input i_rst_n;
-input mem_valid; 
+output mem_valid; 
 // Pins to Top Module 
 input [15:0] core_mem_w_value ;
 input [19:0] core_mem_addr    ;
@@ -65,11 +65,9 @@ localparam IDLE        = 3'b000,
 		   WRITE_BACK  = 3'b110, 
 		   RECOG_CTRL  = 3'b100;
 		   
-<<<<<<< HEAD
 localparam LIMIT = 4'b0111; // limit as mem access latency
-=======
-localparam LIMIT     = 4'b0111;
->>>>>>> ba880791427d18550c9368900294eae109e2a4d1
+
+
 localparam LetterNum = 9'd416;
 
 assign o_SRAM_CE_N = 1'b0 ;
@@ -95,8 +93,8 @@ always@(*)begin: FSM
 			if(core_mem_request)begin
 				state_w = (core_mem_wr) ? READ : WRITE;
 			end
-			else if(inputtimming)begin
-				state_w = RECOG_CTRL;
+			else begin
+				state_w = state_r ;
 			end
 		end
 		READ: begin
@@ -132,7 +130,7 @@ always@(*)begin: Input_Capture
 	IN_ADDR_w = (core_mem_request) ? core_mem_addr    : IN_ADDR_r;
 end
 
-<<<<<<< HEAD
+
 assign o_SRAM_ADDR  = (core_mem_request) ? core_mem_addr : (state_r == RECOG_CTRL) ? {11'b0, addr_count_r} : IN_ADDR_r;
 assign io_SRAM_DQ   = (state_r == WRITE) ? IN_DATA_r     :     16'dz;
 assign o_SRAM_WE_N  = (state_r == WRITE) ? 1'b0          :     	1'b1;
@@ -143,10 +141,6 @@ assign core_wait        = ((state_r == READ) || (state_r == WRITE) || ((state_r 
 
 always@(posedge i_clk or negedge i_rst_n)begin: Flip_Flop
 	if(!i_rst_n)begin
-=======
-always@(posedge i_clk or negedge i_rst)begin: Flip_Flop
-	if(!i_rst)begin
->>>>>>> ba880791427d18550c9368900294eae109e2a4d1
 		state_r   	 <= IDLE;
 		counter_r 	 <= 0;
 		IN_DATA_r 	 <= 0;

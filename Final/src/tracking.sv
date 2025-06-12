@@ -77,8 +77,8 @@ module Tracker (
   assign o_pointH = maxPointH_ff;
   assign o_pointV = maxPointV_ff;
   genvar n;
-  generate
-    for (n = 0; n < `rangeH ; n = n + 1) begin
+  generate 
+    for (n = 0; n < `rangeH ; n = n + 1) begin : letgo
       assign SF_startH1[n] = startH_ff + SF_startOffsetH1_ff[n];
       assign SF_startV1[n] = startV_ff + SF_startOffsetV1_ff[n];
       assign SF_startH2[n] = startH_ff + SF_startOffsetH2_ff[n];

@@ -39,7 +39,7 @@
 //   Ver  :| Author            :| Mod. Date :| Changes Made:
 //   V1.0 :| Johnny FAN        :| 07/07/09  :| Initial Revision
 // --------------------------------------------------------------------
-`include "vga_param.sv"
+`include "VGA_Param.h"
 module I2C_CCD_Config (	//	Host Side
 						iCLK,
 						iRST_N,
