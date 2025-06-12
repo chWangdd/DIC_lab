@@ -13,6 +13,9 @@ module Top (
   input i_key_1,
   input i_key_2,
 
+  input  [7:0] i_R,
+  input  [7:0] i_G,
+  input  [7:0] i_B,
   output [7:0] o_VGA_R,
   output [7:0] o_VGA_G,
   output [7:0] o_VGA_B,
@@ -41,7 +44,7 @@ module Top (
   always @(*) begin
     vgaStream_w = vgaStream_r;
     if (i_key_0) begin
-      vgaStream_w = {8'd250, 8'b0, 8'b0};
+      vgaStream_w = {i_R, i_G, i_B};
     end else if (i_key_1) begin 
       vgaStream_w = {8'b0, 8'd250, 8'b0};
     end else if (i_key_2) begin

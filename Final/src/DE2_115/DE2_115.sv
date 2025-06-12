@@ -200,7 +200,7 @@ logic SDRAM_W_clk, SDRAM_W_en;
 assign VGA_SYNC_N = 1'b0;
 assign VGA_CLK = CLK_25M;
 assign D5M_XCLKIN = CLK_25M;
-assign sdram_ctrl_clk = CLK_100M;
+assign sdram_ctrl_clk = CLK_100M ;
 // D5M
 assign	D5M_TRIGGER	=	1'b1;  // tRIGGER
 assign	D5M_RESET_N	=	DLY_RST_1;
@@ -211,11 +211,6 @@ assign  VGA_CLK = CLK_25M;
 assign	LEDR		=	SW;
 assign	LEDG		=	Y_Cont;
 assign	UART_TXD = UART_RXD;
-
-//fetch the high 8 bits
-//assign  VGA_R = oVGA_R[9:2];
-//assign  VGA_G = oVGA_G[9:2];
-//assign  VGA_B = oVGA_B[9:2];
 
 
 // comment those are use for display
@@ -251,13 +246,8 @@ Altpll pll0( // generate with qsys, please follow lab2 tutorials
 	.altpll_25m_clk(CLK_25M),
 	.altpll_100m_clk(CLK_100M),
 );
-// sdram_pll 			u6	(
-// 							.inclk0(CLOCK2_50),
-// 							.c0(sdram_ctrl_clk),
-// 							.c1(DRAM_CLK),
-// 							.c2(D5M_XCLKIN), //25M
-// 							.c3(VGA_CLK)     //25M 
-// 						);
+
+
 
 // you can decide key down settings on your own, below is just an example
 Debounce deb0(
@@ -291,7 +281,10 @@ Top top0(
 	.i_key_0(key0down),
 	.i_key_1(key1down),
 	.i_key_2(key2down),
-
+	// sdram input
+	.i_R(Read_DATA1[9:2]),
+	.i_G({Read_DATA1[14:10],Read_DATA2[14:12]}),
+	.i_B(Read_DATA2[9:2]),
 	// vga
 	.o_VGA_R(VGA_R),
 	.o_VGA_G(VGA_G),
