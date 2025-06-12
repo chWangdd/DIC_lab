@@ -29,12 +29,14 @@ module Tracker (
   reg [ 1:0] state_ff, state_comb;
   reg [ 1:0] pixelGrade_ff;
   reg pixelGradeVAL_ff;
+  reg updateTriggered_ff, updateTriggered_comb;
   reg [14:0] maxPointH_ff, maxPointH_comb, maxPointV_ff, maxPointV_comb; // candidate point
   reg [14:0] maxPointValue_ff, maxPointValue_comb;                        // value of candidate point
   reg [14:0] prePointH_ff, prePointH_comb, prePointV_ff, prePointV_comb;  // previous tracked point
   reg [ 9:0] Hcnt_ff;
   reg [ 9:0] Vcnt_ff;
   reg pixelVAL;
+  reg hold;
 
   // detection range
   reg [ 9:0] startH_ff, startH_comb, startV_ff, startV_comb;
@@ -87,7 +89,7 @@ module Tracker (
   assign o_pointV = maxPointV_ff[9:5];
   genvar n;
   generate
-    for (n = 0; n < `rangeH ; n = n + 1) begin
+    for (n = 0; n < `rangeH ; n = n + 1) begin : letgo
       assign SF_startH1[n] = startH_ff + SF_startOffsetH1_ff[n];
       assign SF_startV1[n] = startV_ff + SF_startOffsetV1_ff[n];
       assign SF_startH2[n] = startH_ff + SF_startOffsetH2_ff[n];
@@ -144,6 +146,7 @@ module Tracker (
   always_comb begin : state
     state_comb = state_ff;
     pointGenerated_comb = pointGenerated_ff;
+    updateTriggered_comb = updateTriggered_ff;
     case (state_ff)
       S_IDLE: begin
         if (i_start)
@@ -153,12 +156,13 @@ module Tracker (
       S_CAL0:
         state_comb = S_IDLE;
       S_CAL1: begin
-        if (i_hold)
+        if (hold)
           state_comb = S_IDLE;
-        else if((SF_startV1[`rangeH-1] > startV_ff + `possibleV) || (SF_startV2[`rangeH-1] > startV_ff + `possibleV) ||
-                 SF_startV1[`rangeH-1] > totalV || SF_startV2[`rangeH-1] > totalV) begin //after a frame
+        else if((!updateTriggered_ff && (SF_startV1[`rangeH-1] > (startV_ff + `possibleV)) || (SF_startV2[`rangeH-1] > startV_ff + `possibleV) ||
+                 SF_startV1[`rangeH-1] > totalV || SF_startV2[`rangeH-1] > totalV)) begin //after a frame
           state_comb = S_UPDATE;
           pointGenerated_comb = 1;
+          updateTriggered_comb = 1;
         end
         else begin 
           state_comb = state_ff;
@@ -166,19 +170,19 @@ module Tracker (
         end
       end
       S_UPDATE: begin
-        state_comb = state_ff;
-        pointGenerated_comb = pointGenerated_ff;
-        if (i_hold) begin
+        if (hold) begin
           state_comb = S_IDLE;
         end
         else if ((Vcnt_ff == totalV) && (Hcnt_ff == totalH)) begin
           state_comb = S_CAL1;
           pointGenerated_comb = 0;
+          updateTriggered_comb = 0;
         end
       end
       default: begin
         state_comb = state_ff;
         pointGenerated_comb = pointGenerated_ff;
+        updateTriggered_comb = updateTriggered_ff;
       end
     endcase
   end
@@ -208,7 +212,7 @@ module Tracker (
       S_CAL1: begin
         SF_reset1_comb = 0;
         SF_reset2_comb = 0;
-        if (i_hold) begin
+        if (hold) begin
           maxPointH_comb     = 0;
           maxPointV_comb     = 0;
           maxPointValue_comb = 0; 
@@ -229,7 +233,7 @@ module Tracker (
           end
           SF_startOffsetH1_comb[0] = SF_startOffsetH1_ff[0];
           SF_startOffsetV1_comb[0] = SF_startOffsetV1_ff[0] + `subFrameV;
-          SF_reset1_comb[0] <= 1;
+          SF_reset1_comb[0] = 1;
         end   
         else if (SF_valid1[1] && (SF_startOffsetV1_ff[1] <= (startV_ff + `possibleV))) begin
           if (maxPointValue_ff < SF_sum1[1]) begin
@@ -407,6 +411,16 @@ module Tracker (
     end
   end
   always_ff @(posedge i_clk or negedge i_rst_n) begin
+    if(!i_rst_n)
+      hold <= 0;
+    else begin
+      if (i_hold)
+        hold <= 1;
+      else
+        hold <= 0;
+    end
+  end
+  always_ff @(posedge i_clk or negedge i_rst_n) begin
     if (!i_rst_n) begin
       pixelGrade_ff <= 0;
       pixelGradeVAL_ff <= 0;
@@ -464,7 +478,7 @@ module Tracker (
       if (i_start)
         isTracking <= 1;
       else if (state_ff == S_CAL1) begin
-        if (findRed1 != 0 || findRed2 != 0 || i_hold)
+        if (findRed1 != 0 || findRed2 != 0 || hold)
           isTracking <= 0;
       end
       else if (state_ff == S_UPDATE)
@@ -486,6 +500,8 @@ module Tracker (
       SF_reset2_ff     <= {`rangeH{1'b1}};
       startH_ff        <= totalH_half - `overlapH * 3; // notice
       startV_ff        <= totalV_half - `overlapV * 3;
+      pointGenerated_ff  <= 0;
+      updateTriggered_ff <= 0;
       // pixelGradeVAL_ff <= 0;
       for (i = 0; i < `rangeH; i = i + 1) begin
         SF_startOffsetH1_ff[i] <= `overlapH * i;
@@ -502,7 +518,6 @@ module Tracker (
       maxPointH_ff     <= maxPointH_comb;
       maxPointV_ff     <= maxPointV_comb;
       maxPointValue_ff <= maxPointValue_comb;
-      pointGenerated_ff<= pointGenerated_comb;
       // Hcnt_ff          <= Hcnt_comb;
       // Vcnt_ff          <= Vcnt_comb;
       SF_reset1_ff     <= SF_reset1_comb;
@@ -510,7 +525,8 @@ module Tracker (
       startH_ff        <= startH_comb;
       startV_ff        <= startV_comb;
       // pixelGradeVAL_ff <= (i_pixelVAL)? 1: 0;
-      pointGenerated_ff<= pointGenerated_comb;
+      pointGenerated_ff  <= pointGenerated_comb;
+      updateTriggered_ff <= updateTriggered_comb;
       for (i = 0; i < `rangeH; i = i + 1) begin
         SF_startOffsetH1_ff[i] <= SF_startOffsetH1_comb[i];
         SF_startOffsetV1_ff[i] <= SF_startOffsetV1_comb[i];        
