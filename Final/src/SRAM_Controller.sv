@@ -5,8 +5,8 @@
 module SRAM_Controller(
 
 i_clk,
-i_rst,
-inputtimming, 
+i_rst_n,
+mem_valid, 
 // Input assignment
 core_mem_w_value, 
 core_mem_addr,
@@ -28,8 +28,8 @@ io_SRAM_DQ
 );
 
 input i_clk;
-input i_rst;
-input inputtimming; 
+input i_rst_n;
+input mem_valid; 
 // Pins to Top Module 
 input  core_mem_w_value [15:0];
 input  core_mem_addr    [19:0];
@@ -64,7 +64,7 @@ localparam IDLE        = 3'b000,
 		   WRITE_BACK  = 3'b110, 
 		   RECOG_CTRL  = 3'b100;
 		   
-localparam LIMIT = 4'b0111;
+localparam LIMIT = 4'b0111; // limit as mem access latency
 localparam LetterNum = 9'd416;
 
 assign o_SRAM_CE_N = 1'b0 ;
@@ -127,8 +127,8 @@ assign core_mem_r_value = DATA_BACK_r;
 assign DATA_BACK_w      = ((state_r == READ) || (state_r == RECOG_CTRL))  ? io_SRAM_DQ: DATA_BACK_r;   
 assign core_wait        = ((state_r == READ) || (state_r == WRITE) || ((state_r == RECOG_CTRL) && (counter_r <= LIMIT)));
 
-always@(posedge i_clk or negedge i_rst)begin: Flip_Flop
-	if(!i_rst)begin
+always@(posedge i_clk or negedge i_rst_n)begin: Flip_Flop
+	if(!i_rst_n)begin
 		state_r   	 <= IDLE;
 		counter_r 	 <= 0;
 		IN_DATA_r 	 <= 0;

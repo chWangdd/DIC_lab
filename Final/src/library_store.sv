@@ -38,7 +38,7 @@ assign o_x    = ((state_r == WORK) && (!i_deny)) ? i_x : 0;
 assign o_y    = ((state_r == WORK) && (!i_deny)) ? i_y : 0;
 assign o_addr = {addr_r, counter_r};
 
-assign counter_w = (state_r == IDLE) ? 0 : (i_valid) ? counter_r + 1;
+assign counter_w = (state_r == IDLE) ? 0 : (i_valid) ? counter_r + 1 : counter_r;
 
 assign addr_w    = ((state_r == WORK) && (i_deny)) ? ((add_r == LIMIT - 1) ? 0 : addr + 1) : addr_r;
 

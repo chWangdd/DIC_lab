@@ -2,7 +2,7 @@ module similarity(
 	input i_clk, 
 	input i_rst_n,
 	input i_valid, // real time 60 fps valid vector signals
-	input [8:0] i_index, 
+	input [3:0] i_index, 
 	input [5:0] vector_x,
 	input [5:0] vector_y,
 	input [5:0] lib_x, 
@@ -11,13 +11,13 @@ module similarity(
 	output o_index
 );
 
-logic [1:0] state_r, state_w;
-logic [8:0] counter_r, counter_w;
-logic signed [5:0] VEC_X, VEC_Y;
-logic signed [5:0] LIB_X, LIB_Y;
-logic [4:0] max_r, max_w;
-logic signed [15:0] max_sum_r, max_sum_w;
-logic signed [15:0] inter_r, inter_w;
+logic 			[1:0] state_r, state_w;
+logic 			[8:0] counter_r, counter_w;
+logic signed 	[5:0] VEC_X, VEC_Y;
+logic signed 	[5:0] LIB_X, LIB_Y;
+logic 			[4:0] max_r, max_w;
+logic signed 	[15:0] max_sum_r, max_sum_w;
+logic signed 	[15:0] inter_r, inter_w;
 
 localparam IDLE = 2'b00, 
 		   WORK = 2'b01, 
@@ -82,7 +82,7 @@ always@(*)begin: FSM
 end
 
 always@(*)begin: Counter
-	counter_w = (state_r == WORK) ? counter_r + 1 : counter_r;
+	counter_w = (state_r == WORK) ? counter_r + 1 : 0;
 end
 
 always@(negedge i_rst_n or posedge i_clk)begin: FF
