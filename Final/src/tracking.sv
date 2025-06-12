@@ -3,7 +3,10 @@ module Tracker (
   input i_clk,
   input [23:0] i_RGB,
   input i_pixelVAL,
-  
+  // control signal
+  input i_start,
+  input i_hold,
+  // output signal
   output [ 4:0] o_pointH,
   output [ 4:0] o_pointV,
   // output o_isTracking,
@@ -15,7 +18,7 @@ module Tracker (
   localparam totalH_half = 320;
   localparam totalV = 480;
   localparam totalV_half = 240;
-  localparam S_RESET = 0;
+  localparam S_IDLE = 0;
   localparam S_CAL0  = 1; // preious Point is (0,0)  
   localparam S_CAL1  = 2; // general case
   localparam S_UPDATE= 3; // there is a tracking point be generated
@@ -151,26 +154,7 @@ module Tracker (
     end
   end
 
-  // always_comb begin : counter
-  //   if (i_pixelVAL) begin
-  //     Vcnt_comb = Vcnt_ff;
-  //     if (Hcnt_ff < 10'd640) begin
-  //       Hcnt_comb = Hcnt_ff + 1;
-  //     end
-  //     else begin
-  //       Hcnt_comb = 1;
-  //       if (Vcnt_ff < totalV)
-  //         Vcnt_comb = Vcnt_ff + 1;
-  //       else
-  //         Vcnt_comb = 1;
-  //     end
-  //   end
-  //   else begin
-  //     Vcnt_comb = Vcnt_ff;
-  //     Hcnt_comb = Hcnt_ff;
-  //   end
-  // end
-  always_ff @(posedge i_clk or negedge i_rst_n) begin
+  always_ff @(posedge i_clk or negedge i_rst_n) begin : counter
     if (!i_rst_n) begin
       Hcnt_ff <= 0;
       Vcnt_ff <= 1;
@@ -197,31 +181,34 @@ module Tracker (
   end
 
   always_comb begin : state
-  state_comb = state_ff;
-  pointGenerated_comb = pointGenerated_ff;
+  state_comb <= state_ff;
+  pointGenerated_comb <= pointGenerated_ff;
     case (state_ff)
-      S_RESET: begin
-        state_comb = S_CAL1;
-        pointGenerated_comb = 0;  
+      S_IDLE: begin
+        if (i_start)
+          state_comb <= S_CAL1;
+        pointGenerated_comb <= 0;  
       end
       S_CAL1: begin
-        if((SF_startV1[`rangeH-1] > startV_ff + `possibleV) || (SF_startV2[`rangeH-1] > startV_ff + `possibleV) ||
+        if (i_hold)
+          state_comb <= S_IDLE;
+        else if((SF_startV1[`rangeH-1] > startV_ff + `possibleV) || (SF_startV2[`rangeH-1] > startV_ff + `possibleV) ||
          SF_startV1[`rangeH-1] > totalV || SF_startV2[`rangeH-1] > totalV) begin //after a frame
-          state_comb = S_UPDATE;
-          pointGenerated_comb = 1;
+          state_comb <= S_UPDATE;
+          pointGenerated_comb <= 1;
         end
       end
       S_UPDATE: begin
-        state_comb = state_ff;
-        pointGenerated_comb = pointGenerated_ff;
+        state_comb <= state_ff;
+        pointGenerated_comb <= pointGenerated_ff;
         if ((Vcnt_ff == totalV) && (Hcnt_ff == totalH)) begin
-          state_comb = S_CAL1;
-          pointGenerated_comb = 0;
+          state_comb <= S_CAL1;
+          pointGenerated_comb <= 0;
         end
       end
       default: begin
-        state_comb = state_ff;
-        pointGenerated_comb = pointGenerated_ff;
+        state_comb <= state_ff;
+        pointGenerated_comb <= pointGenerated_ff;
       end
     endcase
   end
@@ -244,16 +231,27 @@ module Tracker (
     end
 
     case (state_ff)
-      S_RESET: begin
-        prePointH_comb <= totalH_half;
-        prePointV_comb <= totalV_half;
-        SF_reset1_comb <= 0;
-        SF_reset2_comb <= 0;
+      S_IDLE: begin
+        SF_reset1_comb     <= 0;
+        SF_reset2_comb     <= 0;
       end
       S_CAL1: begin
         SF_reset1_comb <= 0;
         SF_reset2_comb <= 0;
-        if (SF_valid1[0] && (SF_startOffsetV1_ff[0] <= (startV_ff + `possibleV))) begin // update the max point
+        if (i_hold) begin
+          maxPointH_comb     <= 0;
+          maxPointV_comb     <= 0;
+          maxPointValue_comb <= 0; 
+          SF_reset1_comb <= {`rangeH{1'b1}};
+          SF_reset2_comb <= {`rangeH{1'b1}};
+          for (j = 0; j < `rangeH; j = j + 1) begin
+            SF_startOffsetH1_comb[j] <= `overlapH * j; // notice:
+            SF_startOffsetV1_comb[j] <= 0;        
+            SF_startOffsetH2_comb[j] <= `overlapH * j; // notice:
+            SF_startOffsetV2_comb[j] <= `overlapV;        
+          end
+        end 
+        else if (SF_valid1[0] && (SF_startOffsetV1_ff[0] <= (startV_ff + `possibleV))) begin // update the max point
           if (maxPointValue_ff < SF_sum1[0]) begin
             maxPointH_comb <= SF_startH1[0];
             maxPointV_comb <= SF_startV1[0];
@@ -431,7 +429,7 @@ module Tracker (
   // =========================================
   always_ff @(posedge i_clk or negedge i_rst_n) begin
     if (!i_rst_n) begin
-      state_ff         <= S_RESET;
+      state_ff         <= S_IDLE;
       // pixelGrade_ff    <= 0;
       prePointH_ff     <= totalH_half;
       prePointV_ff     <= totalV_half;
