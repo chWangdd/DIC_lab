@@ -358,12 +358,12 @@ module Tracker (
         if (maxPointValue_ff > 0) begin
           prePointH_comb = maxPointH_ff;
           prePointV_comb = maxPointV_ff;
-          startH_comb = (maxPointH_ff < 96 ) ? 0: 
-                        (maxPointH_ff > 416) ? totalH - `possibleH:
-                                              maxPointH_ff - 96;
-          startV_comb = (maxPointV_ff < 96 ) ? 0: 
-                        (maxPointV_ff > 256) ? totalV - `possibleV:
-                                              maxPointV_ff - 96;
+          startH_comb = (maxPointH_ff < `overlapH*3 ) ? 0: 
+                        (maxPointH_ff > totalH - `possibleH) ? totalH - `possibleH:
+                                              maxPointH_ff - `overlapH*3;
+          startV_comb = (maxPointV_ff < `overlapV*3 ) ? 0: 
+                        (maxPointV_ff > totalV - `possibleV) ? totalV - `possibleV:
+                                              maxPointV_ff - `overlapV*3;
         end
         SF_reset1_comb = {`rangeH{1'b1}};
         SF_reset2_comb = {`rangeH{1'b1}};
