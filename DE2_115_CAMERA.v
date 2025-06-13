@@ -475,6 +475,9 @@ wire simulation_o_valid ;
 wire simulation_o_istracking ;
 wire [4:0]simulation_o_pointH ;
 wire [4:0]simulation_o_pointV ;
+wire [29:0] trajColor;
+wire [12:0] renderH, renderV;
+
 // wire	[15:0]	Read_DATA1;
 // wire	[15:0]	Read_DATA2;
 // wire	[ 9:0]	oVGA_R;   				//	VGA Red[9:0]
@@ -675,9 +678,9 @@ I2C_CCD_Config 		u8	(	//	Host Side
 //VGA DISPLAY
 VGA_Controller		u1	(	//	Host Side
 							.oRequest(Read),
-							.iRed(Read_DATA2[9:0]),
-							.iGreen({Read_DATA1[14:10],Read_DATA2[14:10]}),
-							.iBlue(Read_DATA1[9:0]),
+							.iRed(trajColor[29:20]),
+							.iGreen(trajColor[19:10]),
+							.iBlue(trajColor[9:0]),
 							//	VGA Side
 							.oVGA_R(oVGA_R),
 							.oVGA_G(oVGA_G),
@@ -687,13 +690,23 @@ VGA_Controller		u1	(	//	Host Side
 							.oVGA_SYNC(VGA_SYNC_N),
 							.oVGA_BLANK(VGA_BLANK_N),
 							//	Control Signal
+							.orenderH(renderH),
+							.orenderV(renderV),
 							.iCLK(VGA_CTRL_CLK),
 							.iRST_N(DLY_RST_2),
 							.iZOOM_MODE_SW(SW[16])
 						);
 TrajAdder         traj0 (
-							.i_clk(),
-							.i_rst_n(),
+							.i_clk(VGA_CTRL_CLK),
+							.i_rst_n(DLY_RST_2),
+							.i_color({Read_DATA2[9:0],Read_DATA1[15:10],Read_DATA2[15:0],Read_DATA1[9:0]}),
+							.i_h(renderH),
+							.i_v(renderV),
+							.i_rendering(1),
+							.i_pointH(Point_H),
+							.i_pointV(Point_V),
+							.i_pointVAL(Track_Valid),
+							.o_color(trajColor)
 )
 // New added part of our design
 // Modules 
